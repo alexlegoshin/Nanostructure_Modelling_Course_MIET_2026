@@ -1,0 +1,16 @@
+device new
+device loadgeo C:/tcad/M2/t1_msh.grd
+device loadsim C:/tcad/M2/t1_des.dat sim
+page size 578 160
+window new
+model new
+model link 1 1
+model data sim-SpaceCharge
+model cmap rainbow lines
+model shade face
+model render edge face contact junction
+model sedge 1.0 black
+model scontact 2.0 magenta
+model sjunction 2.0 brown
+view reset 2d
+page draw

@@ -1,0 +1,17 @@
+Material = "Silicon" {
+
+Bandgap
+{
+	Chi0	= 4.05	# [eV]
+	Bgn2Chi	= 0.5	# [1]
+	Eg0	= 1.40000	# [eV]
+	dEg0(Bennett)	= 0.0000e+00	# [eV]
+	dEg0(Slotboom)	= -4.7950e-03	# [eV]
+	dEg0(OldSlotboom)	= -1.5950e-02	# [eV]
+	dEg0(delAlamo)	= -1.4070e-02	# [eV]
+	alpha	= 4.7300e-04	# [eV K^-1]
+	beta	= 6.3600e+02	# [K]
+	Tpar	= 0.0000e+00	# [K]
+}
+
+}

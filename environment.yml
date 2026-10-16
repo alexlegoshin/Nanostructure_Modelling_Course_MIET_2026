@@ -1,0 +1,18 @@
+# conda env create -f environment.yml && conda activate nanomod
+name: nanomod
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - numpy=2.4
+  - scipy=1.18
+  - matplotlib=3.11
+  - pandas=3.0
+  - pillow=12.2
+  - plotly=6.7
+  - jupyterlab=4.5
+  - pip
+  - pip:
+      - kaleido==1.4.0      # экспорт графиков Plotly в PNG
+      - devsim==2.11.0      # только для Lab3_diode_3D/devsim
+      - gmsh==4.15.2        # только для Lab3_diode_3D/devsim

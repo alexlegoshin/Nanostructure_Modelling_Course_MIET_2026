@@ -1,0 +1,20 @@
+Material = "Silicon" {
+
+Bandgap
+{
+	Chi0	= 4.05	# [eV]
+	Bgn2Chi	= 0.5	# [1]
+	Eg0	= 1.14500	# [eV]
+	dEg0(OldSlotboom)	= -1.5950e-02	# [eV]
+	alpha	= 4.7300e-04	# [eV K^-1]
+	beta	= 6.3600e+02	# [K]
+	Tpar	= 0.0000e+00	# [K]
+}
+
+ConstantMobility:
+{
+	mumax	= 3000.0 ,	1000.0	# [cm^2/(Vs)]
+	Exponent	= 2.5 ,	2.2	# [1]
+}
+
+}

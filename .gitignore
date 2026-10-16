@@ -1,0 +1,24 @@
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+anaconda_projects/
+
+# macOS
+.DS_Store
+
+# DEVSIM: сетки и поля пересоздаются скриптом и весят десятки МБ
+*.msh
+*.tec
+
+# ISE TCAD: дистрибутив, лицензии и мануалы в репозиторий не кладутся
+*.rar
+*.iso
+*.msi
+license.dat
+*.pdf
+*.doc
+
+# логи прогонов ISE внутри гостя
+*.log
+!Lab3_diode_3D/python/sweep?.log
