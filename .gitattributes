@@ -1,0 +1,2 @@
+# батники и командные файлы уходят внутрь Windows XP — там нужен CRLF
+*.bat text eol=crlf
