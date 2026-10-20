@@ -22,3 +22,6 @@ license.dat
 # логи прогонов ISE внутри гостя
 *.log
 !Lab3_diode_3D/python/sweep?.log
+
+# логи прогонов DEVSIM на ПК (FUJION): рабочие, в репозиторий — только итоговые json
+Lab3_diode_3D/devsim/logs_pc/
