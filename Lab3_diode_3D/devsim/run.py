@@ -8,7 +8,8 @@
 
 Что делает: строит сетку (tools/mesh3d.py, кэшируется в mesh_<диод>_<scale>.msh),
 решает равновесие, включает дрейф-диффузию и разворачивает анод до --vmax.
-Пишет iv_<диод>_<scale>_<подвижность>.json (V, I) и поле diode_*.tec (Tecplot ASCII).
+Пишет iv_<диод>_<scale>_<подвижность>.json (V, I) и поля при Vmax в field_*.npz
+(узлы, тетраэдры, потенциал, n, p, легирование) — по ним рисует make_figures.py.
 Подвижность по умолчанию — element: Коги-Томас + насыщение скорости по полному |E|
 на тетраэдре (см. tools/dev3d.py, почему не по ребру).
 
@@ -50,6 +51,30 @@ def peak_mb():
     return r / 1024 / 1024 if sys.platform == "darwin" else r / 1024
 
 
+def save_fields(ds, path):
+    """Поля в узлах и тетраэдры — для картинок (make_figures.py), без Tecplot."""
+    import numpy as np
+    import dev3d
+    get = lambda n: np.array(ds.get_node_model_values(device=dev3d.DEV, region=dev3d.REG, name=n))
+    tets = np.array(ds.get_element_node_list(device=dev3d.DEV, region=dev3d.REG), dtype=np.int32)
+    # ток, втекающий в каждый узел, ровно в той дискретизации, что решал DEVSIM:
+    # поток по ребру элемента * площадь грани контрольного объёма. Внутри прибора
+    # он нулевой (непрерывность), в узлах контакта — их доля тока контакта.
+    node_current = np.zeros(len(get("x")))
+    if dev3d.MOBILITY == "element":
+        ds.edge_from_node_model(device=dev3d.DEV, region=dev3d.REG, node_model="node_index")
+        for nm, eq in (("ia_", "node_index@en0"), ("ib_", "node_index@en1")):
+            ds.element_model(device=dev3d.DEV, region=dev3d.REG, name=nm, equation=eq)
+        ev = lambda n: np.array(ds.get_element_model_values(device=dev3d.DEV, region=dev3d.REG, name=n))
+        flux = (ev("ElectronCurrentElem") + ev("HoleCurrentElem")) * ev("ElementEdgeCouple")
+        ia, ib = ev("ia_").astype(np.int64), ev("ib_").astype(np.int64)
+        np.add.at(node_current, ia, flux)
+        np.add.at(node_current, ib, -flux)
+    np.savez_compressed(path, x=get("x"), y=get("y"), z=get("z"), psi=get("Potential"),
+                        n=get("Electrons"), p=get("Holes"), C=get("NetDoping"), tets=tets,
+                        node_current=node_current, area=get("ContactSurfaceArea"))
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("diode", choices=["A", "B"])
@@ -85,7 +110,7 @@ def main():
     out = os.path.join(HERE, "iv_%s.json" % mtag)
     iv = dev3d.ramp(a.vmax, a.step, log=lambda s: print(s, flush=True))
     json.dump(iv, open(out, "w"))
-    ds.write_devices(file=os.path.join(HERE, "diode_%s.tec" % mtag), type="tecplot")
+    save_fields(ds, os.path.join(HERE, "field_%s.npz" % mtag))
     print("готово за %.0f с, пиковая память %.0f МБ, ВАХ в %s"
           % (time.time() - t0, peak_mb(), out), flush=True)
 

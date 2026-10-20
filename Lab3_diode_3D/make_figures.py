@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """Все картинки лабы 3 из уже посчитанных данных — ISE не нужен.
 
-    python3 Lab3_diode_3D/make_figures.py
+    python3 Lab3_diode_3D/make_figures.py            # ISE, свой решатель, DEVSIM на scale 2
+    python3 Lab3_diode_3D/make_figures.py 1          # DEVSIM с мелкой сетки (scale 1)
 
 Берёт выгруженные из ISE файлы (ise/) и результаты своего решателя (python/),
 рисует восемь позиций задания в двух вариантах и собирает сводные листы
@@ -22,6 +23,7 @@ PY = os.path.join(HERE, "python") + "/"
 REF = os.path.join(HERE, "reference") + "/"
 OUT_ISE = os.path.join(HERE, "results", "ise") + "/"
 OUT_PY = os.path.join(HERE, "results", "python") + "/"
+DS = os.path.join(HERE, "devsim") + "/"
 
 LX, LY, LZ = 1.0, 3.0, 0.8
 ANODE = {"A": (0, 1, 1, 2), "B": (0.5, 1, 1, 2)}   # (x0, y0, x1, y1), мкм
@@ -97,6 +99,40 @@ def figures_python():
     print("питон: A %.5f А, B %.5f А при 4 В" % (A["I"][-1], B["I"][-1]))
 
 
+def figures_devsim(scale):
+    """Восемь позиций по DEVSIM (devsim/run.py): поля и ВАХ с сетки заданного масштаба."""
+    import json
+    tag = lambda t: "%s_%s_element" % (t, scale)
+    need = [DS + "field_%s.npz" % tag(t) for t in "AB"] + [DS + "iv_%s.json" % tag(t) for t in "AB"]
+    if not all(os.path.exists(f) for f in need):
+        print("DEVSIM scale %s: нет файлов, пропускаю" % scale)
+        return None
+    out = os.path.join(HERE, "results", "devsim_%s" % scale) + "/"
+    os.makedirs(out, exist_ok=True)
+    z = {t: np.load(DS + "field_%s.npz" % tag(t)) for t in "AB"}
+    for t in "AB":
+        pp.devsim_structure(out + "z1_структура_%s.png" % t, z[t], LX, LY, LZ, ANODE[t])
+    iv = {t: np.array(json.load(open(DS + "iv_%s.json" % tag(t)))) for t in "AB"}
+    ise.xy([("I (A)", iv["B"][:, 0], iv["B"][:, 1], "k"), ("I (A)", iv["A"][:, 0], iv["A"][:, 1], "r")],
+           out + "z2_вах.png", size=(497, 462), legend=False)
+    xa, ja, fa = pp.devsim_j_top(DS + "field_%s.npz" % tag("A"), ANODE["A"])
+    xb, jb, fb = pp.devsim_j_top(DS + "field_%s.npz" % tag("B"), ANODE["B"])
+    print("DEVSIM: поток через анод %.5f / %.5f А против тока контакта %.5f / %.5f А"
+          % (fa, fb, iv["A"][-1, 1], iv["B"][-1, 1]))
+    ise.xy([("J (A/cm^2)", xb, jb, "k"), ("J (A/cm^2)", xa, ja, "r")],
+           out + "z2_ток_вдоль_границы.png", size=(484, 510), legend=False)
+    for nm, t, kind, v in (("z3_A_сечение_y1.5", "A", "y", 1.5), ("z3_B_сечение_y1.5", "B", "y", 1.5),
+                           ("z3_B_сечение_x0.75", "B", "x", 0.75), ("z3_B_сечение_x0.25", "B", "x", 0.25)):
+        pp.cut_in_box(out + nm + ".png", None, kind, v, anode=ANODE[t],
+                      uwF=pp.devsim_cut(z[t], kind, v))
+    n = len(z["A"]["x"]), len(z["B"]["x"])
+    print("DEVSIM scale %s: A %.5f А, B %.5f А при 4 В, узлов %d / %d"
+          % (scale, iv["A"][-1, 1], iv["B"][-1, 1], n[0], n[1]))
+    sheet.pairs([(t, REF + f + ".png", out + f + ".png", "") for t, f in NAMES], out + "СВОДНЫЙ_ЛИСТ.png",
+                title=TITLE + ";   DEVSIM, %d / %d узлов" % n)
+    return out
+
+
 if __name__ == "__main__":
     vb = figures_ise()
     figures_python()
@@ -109,4 +145,5 @@ if __name__ == "__main__":
                  for t, f in NAMES], OUT_ISE + "СВОДНЫЙ_ЛИСТ.png", title=TITLE)
     sheet.pairs([(t, REF + f + ".png", OUT_PY + f + ".png", "") for t, f in NAMES],
                 OUT_PY + "СВОДНЫЙ_ЛИСТ.png", title=TITLE)
+    figures_devsim(sys.argv[1] if len(sys.argv) > 1 else "2")
     print("сводные листы собраны")

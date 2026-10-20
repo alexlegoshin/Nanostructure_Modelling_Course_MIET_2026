@@ -95,9 +95,15 @@ def structure(path, grd, dat, LX, LY, LZ, anode,
     Два цвета, а не радуга: примесь тут ступенькой, промежуточных значений нет.
     """
     g = dfise.read_grid3d(grd)
-    v, s = g["vertices"], g["surface"]
     dop = dfise.read_dataset(dat)["DopingConcentration"]
+    return structure_surface(path, g["vertices"], g["surface"], dop, LX, LY, LZ, anode,
+                             elev=elev, azim=azim, width=width, height=height, zoom=zoom)
 
+
+def structure_surface(path, v, s, dop, LX, LY, LZ, anode,
+                      elev=20, azim=-135, width=348, height=276, zoom=1.05, lw=0.2):
+    """То же по готовой поверхности: v — вершины (мкм), s — треугольники, dop — примесь в вершинах.
+    Так рисуется и сетка DEVSIM, не только DF-ISE."""
     fig = plt.figure(figsize=(width / 100.0, height / 100.0), dpi=100)
     ax = fig.add_axes([0, 0, 1, 1], projection="3d")
 
@@ -105,7 +111,7 @@ def structure(path, grd, dat, LX, LY, LZ, anode,
     faces = [[tuple(v[i]) for i in t] for t in s]
     cols = [BLUE if dop[t].mean() < 0 else RED for t in s]
     ax.add_collection3d(Poly3DCollection(faces, facecolors=cols,
-                                         edgecolors="k", linewidths=0.2))
+                                         edgecolors="k", linewidths=lw))
 
     # контакты приподняты на волосок над гранью, иначе прячутся под ней
     e = LZ * 0.025
