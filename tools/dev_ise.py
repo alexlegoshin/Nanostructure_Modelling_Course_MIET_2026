@@ -34,9 +34,14 @@ T = 300.0
 Q = 1.602176634e-19
 VT = 1.380649e-23 * T / Q
 EPS = 11.7 * 8.8541878128e-14
-NI = 1.416e10                     # калибровка по ВАХ ISE: при n_i = 1e10 ток A при 0.1 В вдвое ниже ISE
-                                  # (1.278e-16 против 2.549e-16 А), ток ~ n_i² -> 1e10·sqrt(1.994)
-EXT_BELOW = 0.7                   # float128 в сборке нужен, пока ток мал; выше — обычный double
+NI = 1.4385e10                    # калибровка по ВАХ ISE на его же сетке: при малых смещениях ток ~ n_i²,
+                                  # отношение к ISE постоянно от 0.1 до 0.5 В; при n_i = 1.359e10 и
+                                  # исправленных ячейках (BOX="clip") оно 0.8925 -> 1.359e10/sqrt(0.8925)
+HFS_DRIVE = "e"                   # движущая сила насыщения: "e" — поле вдоль ребра, "qf" — градиент квазиуровня.
+                                  # У ISE 7 — поле: с "qf" излом ВАХ вдвое выше ISE (2.58 против 1.34 мА при
+                                  # 1.05 В) и наклон при малых токах n = 1.03; с "e" — n = 1.00 и +9 % (это n_i)
+LOW_RELERR = 1e-5                 # допуск ниже EXT_BELOW, если float128 выключен (мелкие сетки, --fast)
+EXT_BELOW = 0.7                  # float128 в сборке нужен, пока ток мал; выше — обычный double
 F_SMOOTH = 1.0                    # В/см: |F| = sqrt(F² + F_SMOOTH²), гладко в нуле
 
 MASETTI = {   # mu_min1, mu_min2, mu1, Pc, Cr, Cs, alpha, beta, mu_const — Si, dessis
@@ -91,6 +96,65 @@ def create_device(mesh, donors=None, acceptors=None, junction=None):
         CreateNodeModel(DEV, REG, "Donors", "%g*step(%g-z)" % (ND, zj))
 
 
+# ------------------------------------------------------------------- геометрия ячеек
+BOX = "clip"     # "devsim" — как есть; "signed" — грани Вороного со знаком; "clip" — со знаком, < 0 -> 0.
+                 # На сетке ISE signed и clip совпадают (отрицательные — шум ~1e-17 мкм²), а с ними
+                 # ВАХ A на 1.5–4 В в пределах 2 % от ISE; с ячейками DEVSIM — на 10–15 % выше
+
+
+def correct_box(verts_um, tets, mode=None):
+    """Поправить площади граней ячеек и объёмы, которые DEVSIM 2.11 завышает в 3D.
+
+    DEVSIM складывает вклады тетраэдров в грань Вороного по модулю: на сетке ISE диода A
+    сумма объёмов ячеек 3.06 мкм³ вместо 2.4. Встроенную EdgeCouple не заменить, поэтому
+    все рёберные потоки домножаются на CR = площадь_правильная / EdgeCouple, а узловые
+    заряды — на VR = объём_правильный / NodeVolume (модели CR и VR, см. _flux и _charge).
+    """
+    import voronoi3d
+    mode = mode or BOX
+    nodes = len(ds.get_node_model_values(device=DEV, region=REG, name="x"))
+    ds.node_solution(device=DEV, region=REG, name="nid")
+    ds.set_node_values(device=DEV, region=REG, name="nid", values=[float(i) for i in range(nodes)])
+    ds.edge_from_node_model(device=DEV, region=REG, node_model="nid")
+    xyz = np.stack([ds.get_node_model_values(device=DEV, region=REG, name=k) for k in "xyz"], axis=1) * 1e4
+    # узлы DEVSIM -> наши вершины (по координатам, мкм)
+    key = {tuple(np.round(p, 7)): i for i, p in enumerate(verts_um)}
+    d2v = np.array([key[tuple(np.round(p, 7))] for p in xyz])
+    v2d = np.empty_like(d2v); v2d[d2v] = np.arange(len(d2v))
+    e0 = np.array(ds.get_edge_model_values(device=DEV, region=REG, name="nid@n0")).astype(int)
+    e1 = np.array(ds.get_edge_model_values(device=DEV, region=REG, name="nid@n1")).astype(int)
+
+    edges, signed, _ = voronoi3d.couples(verts_um, tets)
+    area = signed if mode == "signed" else np.maximum(signed, 0.0)
+    if mode == "devsim":
+        area = None
+    ec = np.array(ds.get_edge_model_values(device=DEV, region=REG, name="EdgeCouple"))
+    el = np.array(ds.get_edge_model_values(device=DEV, region=REG, name="EdgeLength"))
+    nv = np.array(ds.get_node_model_values(device=DEV, region=REG, name="NodeVolume"))
+    if area is None:
+        cr, vr = np.ones_like(ec), np.ones_like(nv)
+    else:
+        a, b = d2v[e0], d2v[e1]
+        lo, hi = np.minimum(a, b), np.maximum(a, b)
+        idx = {(int(p), int(q)): k for k, (p, q) in enumerate(edges)}
+        mine = np.array([area[idx[(int(p), int(q))]] for p, q in zip(lo, hi)]) * 1e-8   # мкм² -> см²
+        zero = ec == 0
+        cr = np.where(zero, 0.0, mine / np.where(zero, 1.0, ec))
+        if zero.any():   # DEVSIM не даёт этому ребру потока — поправить нечем
+            print("  correct_box: рёбер с EdgeCouple=0 у DEVSIM: %d, наша площадь там: макс %.3g мкм²"
+                  % (zero.sum(), np.abs(mine[zero]).max() * 1e8), flush=True)
+        # объём ячейки: пирамиды A·(L/2)/3 от каждого ребра к обоим его концам
+        vol = np.zeros(nodes)
+        np.add.at(vol, e0, mine * el / 6); np.add.at(vol, e1, mine * el / 6)
+        vr = vol / nv
+    ds.edge_solution(device=DEV, region=REG, name="CR")
+    ds.set_edge_values(device=DEV, region=REG, name="CR", values=cr.tolist())
+    ds.node_solution(device=DEV, region=REG, name="VR")
+    ds.set_node_values(device=DEV, region=REG, name="VR", values=vr.tolist())
+    return {"mode": mode, "volume_um3": float((nv * vr).sum() * 1e12),
+            "negative_edges": int((cr < 0).sum()), "edges": len(cr)}
+
+
 # ------------------------------------------------------------------- физика
 def parameters():
     for name, val in (("Permittivity", EPS), ("ElectronCharge", Q), ("V_t", VT), ("n_i", NI)):
@@ -119,11 +183,11 @@ def poisson_only():
     CreateSolution(DEV, REG, "Potential")
     for n, e in (("IntrinsicElectrons", "n_ie*exp(Potential/V_t)"),
                  ("IntrinsicHoles", "n_ie^2/IntrinsicElectrons"),
-                 ("PotentialIntrinsicCharge", "-ElectronCharge*kahan3(IntrinsicHoles, -IntrinsicElectrons, NetDoping)")):
+                 ("PotentialIntrinsicCharge", "-VR*ElectronCharge*kahan3(IntrinsicHoles, -IntrinsicElectrons, NetDoping)")):
         CreateNodeModel(DEV, REG, n, e)
         CreateNodeModelDerivative(DEV, REG, n, e, "Potential")
     for n, e in (("ElectricField", "(Potential@n0-Potential@n1)*EdgeInverseLength"),
-                 ("PotentialEdgeFlux", "Permittivity*ElectricField")):
+                 ("PotentialEdgeFlux", "CR*Permittivity*ElectricField")):
         CreateEdgeModel(DEV, REG, n, e)
         CreateEdgeModelDerivatives(DEV, REG, n, e, "Potential")
     ds.equation(device=DEV, region=REG, name="PotentialEquation", variable_name="Potential",
@@ -150,7 +214,7 @@ def drift_diffusion(field_dependent=True):
     ds.set_node_values(device=DEV, region=REG, name="Holes", init_from="IntrinsicHoles")
     sol = ("Potential", "Electrons", "Holes")
 
-    pne = "-ElectronCharge*kahan3(Holes, -Electrons, NetDoping)"
+    pne = "-VR*ElectronCharge*kahan3(Holes, -Electrons, NetDoping)"
     CreateNodeModel(DEV, REG, "PotentialNodeCharge", pne)
     for v in ("Electrons", "Holes"):
         CreateNodeModelDerivative(DEV, REG, "PotentialNodeCharge", pne, v)
@@ -165,9 +229,11 @@ def drift_diffusion(field_dependent=True):
         _edge("mul_" + k, "0.5*(mulow_%s@n0 + mulow_%s@n1)" % (k, k), [])
         if field_dependent:
             vsat, beta = CANALI[k]
-            if k == "n":   # квазиуровень электронов phi_n = Potential + dEg/2 - V_t·ln(n/n_i)
+            if HFS_DRIVE == "e":   # поле вдоль ребра
+                dphi = "(Potential@n1 - Potential@n0)"
+            elif k == "n":         # квазиуровень электронов phi_n = Potential + dEg/2 - V_t·ln(n/n_i)
                 dphi = "(Potential@n1 - Potential@n0 + 0.5*(dEg@n1 - dEg@n0) - V_t*log(Electrons@n1/Electrons@n0))"
-            else:          # дырок phi_p = Potential - dEg/2 + V_t·ln(p/n_i)
+            else:                  # дырок phi_p = Potential - dEg/2 + V_t·ln(p/n_i)
                 dphi = "(Potential@n1 - Potential@n0 - 0.5*(dEg@n1 - dEg@n0) + V_t*log(Holes@n1/Holes@n0))"
             _edge("F_" + k, "pow((%s*EdgeInverseLength)^2 + %g, 0.5)" % (dphi, F_SMOOTH ** 2), sol)
             _edge("mu_" + k, "mul_{k}*pow(1 + pow(mul_{k}*F_{k}/{v:g}, {b:g}), {ib:.12g})".format(
@@ -175,8 +241,8 @@ def drift_diffusion(field_dependent=True):
         else:
             _edge("mu_" + k, "mul_" + k, [])
 
-    Jn = "ElectronCharge*mu_n*EdgeInverseLength*V_t*kahan3(Electrons@n1*B(vdn), Electrons@n1*vdn, -Electrons@n0*B(vdn))"
-    Jp = "-ElectronCharge*mu_p*EdgeInverseLength*V_t*kahan3(Holes@n1*B(vdp), -Holes@n0*B(vdp), -Holes@n0*vdp)"
+    Jn = "CR*ElectronCharge*mu_n*EdgeInverseLength*V_t*kahan3(Electrons@n1*B(vdn), Electrons@n1*vdn, -Electrons@n0*B(vdn))"
+    Jp = "-CR*ElectronCharge*mu_p*EdgeInverseLength*V_t*kahan3(Holes@n1*B(vdp), -Holes@n0*B(vdp), -Holes@n0*vdp)"
     _edge("ElectronCurrent", Jn, sol)
     _edge("HoleCurrent", Jp, sol)
     for n, e, v in (("NCharge", "-ElectronCharge*Electrons", "Electrons"),
@@ -209,14 +275,21 @@ def extended(on):
         ds.set_parameter(name=p, value=bool(on))
 
 
+FAST = False   # мелкие сетки: без float128; ниже EXT_BELOW допуск LOW_RELERR (ток там ничтожен)
+
+
 def setup(field_dependent=True):
-    extended(True)
+    extended(not FAST)
+    if "CR" not in ds.get_edge_model_list(device=DEV, region=REG):     # без correct_box — как есть
+        CreateEdgeModel(DEV, REG, "CR", "1")
+        CreateNodeModel(DEV, REG, "VR", "1")
     parameters()
     doping_models()
     poisson_only()
-    ds.solve(type="dc", solver_type=SOLVER, absolute_error=1.0, relative_error=1e-12, maximum_iterations=60)
+    ds.solve(type="dc", solver_type=SOLVER, absolute_error=1.0,
+             relative_error=1e-10 if FAST else 1e-12, maximum_iterations=60)
     drift_diffusion(field_dependent)
-    solve()
+    solve(rel=LOW_RELERR if FAST else None)
 
 
 def anode_current():
@@ -224,20 +297,47 @@ def anode_current():
                for e in ("ElectronContinuityEquation", "HoleContinuityEquation"))
 
 
-def ramp(vmax=4.0, step=0.1, maxstep=0.2, log=print):
+SOL = ("Potential", "Electrons", "Holes")
+
+
+def _snapshot():
+    return {s: np.array(ds.get_node_model_values(device=DEV, region=REG, name=s)) for s in SOL}
+
+
+def _restore(x):
+    for s in SOL:
+        ds.set_node_values(device=DEV, region=REG, name=s, values=x[s].tolist())
+
+
+def _extrapolate(cur, prev, r):
+    """Начальное приближение для нового напряжения, как Extrapolate у ISE:
+    потенциал — линейно по V, концентрации — линейно в логарифме (они ~ exp(V/V_t))."""
+    out = {"Potential": cur["Potential"] + r * (cur["Potential"] - prev["Potential"])}
+    for s in ("Electrons", "Holes"):
+        # не больше e^3 ≈ 20 раз за шаг: на изломе рост тока резко замедляется, и полный
+        # логарифмический прогноз (×500 за 0.2 В) уводит концентрации к 1e20 — Ньютон вязнет
+        out[s] = cur[s] * np.exp(np.clip(r * np.log(cur[s] / prev[s]), -3, 3))
+    return out
+
+
+def ramp(vmax=4.0, step=0.1, maxstep=0.2, log=print, extrapolate=True):
     """Развёртка анода, как Quasistationary у ISE: шаг растёт в 1.5 раза до maxstep
     (MaxStep=0.05 от 4 В = 0.2 В), при срыве делится пополам. Возвращает [(V, I)]."""
     V, out, t0, h = 0.0, [(0.0, anode_current())], time.time(), step
-    ext, ext_below = True, EXT_BELOW
+    ext, ext_below = not FAST, EXT_BELOW
+    cur, prev, Vprev = _snapshot(), None, None
     while V < vmax - 1e-9:
         if ext and V >= ext_below - 1e-9:
             extended(False); ext = False
         Vn = min(V + h, vmax)
         ds.set_parameter(device=DEV, name="anode_bias", value=Vn)
+        if extrapolate and prev is not None:
+            _restore(_extrapolate(cur, prev, (Vn - V) / (V - Vprev)))
         try:
-            solve(iters=30)
+            solve(rel=LOW_RELERR if FAST and Vn < EXT_BELOW - 1e-9 else None, iters=30)
         except ds.error:
             ds.set_parameter(device=DEV, name="anode_bias", value=V)
+            _restore(cur)
             if not ext:                      # тот же шаг во float128 — и так уже до конца
                 extended(True); ext, ext_below = True, float("inf")
                 log("  %.3f В: в double не сошлось, дальше float128" % Vn)
@@ -246,7 +346,8 @@ def ramp(vmax=4.0, step=0.1, maxstep=0.2, log=print):
             if h < 1e-4:
                 log("  не сходится у %.4f В, останавливаюсь" % V); break
             continue
-        V = Vn
+        Vprev, V = V, Vn
+        prev, cur = cur, _snapshot()
         out.append((V, anode_current()))
         log("  V=%.3f  I=%.5e А  %s (%.0f с)" % (V, out[-1][1], "f128" if ext else "f64 ", time.time() - t0))
         h = min(maxstep, h * 1.5)

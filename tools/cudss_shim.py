@@ -19,7 +19,10 @@ import cupyx.scipy.sparse as csp
 import devsim
 import nvmath
 
-STATS = {"factor": 0, "analysis": 0}
+import os
+# CUDSS_HYBRID=1 — сразу гибридный режим (множители в ОЗУ); иначе он включается после ALLOC_FAILED
+STATS = {"factor": 0, "analysis": 0, "hybrid": os.environ.get("CUDSS_HYBRID") == "1"}
+HYBRID_GPU_LIMIT = os.environ.get("CUDSS_GPU_LIMIT", "6 GiB")   # в гибридном режиме: столько видеопамяти (Windows держит ~0.7 ГБ под экран)
 
 
 class _Solver:
@@ -49,13 +52,31 @@ class _Solver:
             self.A = csp.csr_matrix((self._equilibrate(Ax[self.perm]), R.indices.astype(cp.int32),
                                      R.indptr.astype(cp.int32)), shape=(n, n))
             self.b = cp.zeros(n)
-            self.solver = nvmath.sparse.advanced.DirectSolver(self.A, self.b)
-            self.solver.plan()
+            self._make()
             STATS["analysis"] += 1
         else:
             self.A.data[...] = self._equilibrate(Ax[self.perm])
-        self.solver.factorize()
+        try:
+            self.solver.factorize()
+        except Exception as e:
+            if "ALLOC" not in str(e) or STATS.get("hybrid"):
+                raise
+            # не влезло в видеопамять — множители в ОЗУ, на GPU рабочий объём (гибридный режим cuDSS)
+            STATS["hybrid"] = True
+            print("  cudss_shim: видеопамяти мало, перехожу в гибридный режим (ОЗУ+GPU)", flush=True)
+            self.close(); self._make(); self.solver.factorize()
         STATS["factor"] += 1
+
+    def _make(self):
+        cp.get_default_memory_pool().free_all_blocks()    # кэш CuPy не должен отнимать память у cuDSS
+        adv = nvmath.sparse.advanced
+        ex = None
+        if STATS.get("hybrid"):
+            ex = adv.ExecutionCUDA(hybrid_memory_mode_options=adv.HybridMemoryModeOptions(
+                hybrid_memory_mode=True, hybrid_device_memory_limit=HYBRID_GPU_LIMIT,
+                register_cuda_memory=False))
+        self.solver = adv.DirectSolver(self.A, self.b, execution=ex)
+        self.solver.plan()
 
     def _equilibrate(self, data):
         """Масштаб строк и столбцов: максимум |a_ij| в каждой — 1.
