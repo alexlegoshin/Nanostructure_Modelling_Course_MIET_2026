@@ -32,6 +32,13 @@ for tag, col, style in (("A", "tab:red", "--"), ("B", "tab:blue", "--")):
         for a in ax: a.plot(V, I, style, color=col, lw=1.6, label="ISE, диод " + tag)
     except Exception: pass
 
+for tag, col in (("A", "tab:red"), ("B", "tab:blue")):
+    p = os.path.join(HERE, "..", "devsim", "iv_%s_2_element.json" % tag)
+    if not os.path.exists(p): continue
+    import json
+    VI = np.array(json.load(open(p)))
+    for a in ax: a.plot(VI[:, 0], VI[:, 1], ":", color=col, lw=2, label="DEVSIM, диод " + tag)
+
 ax[0].set_xlabel("напряжение на аноде, В"); ax[0].set_ylabel("ток, А")
 ax[0].set_title("линейная шкала"); ax[0].grid(alpha=.3); ax[0].legend(fontsize=8)
 ax[1].set_yscale("log"); ax[1].set_xlabel("напряжение на аноде, В")
