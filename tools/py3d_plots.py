@@ -224,3 +224,72 @@ def devsim_j_top(path_npz, anode, LZ=0.8, y=1.5, nx=101, sx=0.04, sy=0.1):
     # вне анода тока через грань нет: там изолятор, в окно попадают только узлы анода
     Jl = np.where(inside, (w * Ii).sum(1) / np.maximum((w * Ai).sum(1), 1e-300), 0.0)
     return xs, Jl, float(Ii.sum())
+
+
+# ------------------------------------------- |J| вдоль верхней границы сечения, как у эталона
+# Эталон строит модуль полного вектора плотности тока на линии z = LZ, y = 1.5:
+# под анодом это ток в контакт, вне анода — ток вдоль поверхности. Поэтому здесь
+# считается именно |J|, а не только ток через контакт.
+
+def _sg(psi_a, psi_b, n_a, n_b, p_a, p_b, Nt, h):
+    """Поток Шарфеттера-Гуммеля по ребру a -> b (как в dd3d), А/см2, компонента вдоль ребра."""
+    import dd3d
+    d = (psi_a - psi_b) / dd3d.VT
+    E = (psi_a - psi_b) / h
+    mn = dd3d.mu_field(dd3d.mu_doping(Nt, "n"), E, "n")
+    mp = dd3d.mu_field(dd3d.mu_doping(Nt, "p"), E, "p")
+    Jn = Q * mn * dd3d.VT / h * (n_b * dd3d.bern(-d) - n_a * dd3d.bern(d))
+    Jp = -Q * mp * dd3d.VT / h * (p_b * dd3d.bern(d) - p_a * dd3d.bern(-d))
+    return Jn + Jp
+
+
+def j_top_abs(path_npz, y=1.5):
+    """Самописный решатель: |J| в узлах верхней грани на линии y = 1.5.
+    Компоненты — из потоков по рёбрам вдоль x, y (по поверхности) и z (вниз), средние по узлу."""
+    z = np.load(path_npz)
+    psi, n, p, C = z["psi"], z["n"], z["p"], z["C"]
+    x, yy, zz = z["x"], z["y"], z["z"]
+    j = int(np.argmin(np.abs(yy - y * 1e-4))); k = len(zz) - 1
+
+    def along(i0, i1, axis_h):
+        Nt = 0.5 * (np.abs(C[i0]) + np.abs(C[i1]))
+        return _sg(psi[i0], psi[i1], n[i0], n[i1], p[i0], p[i1], Nt, axis_h)
+
+    nx = len(x)
+    jx = np.zeros(nx); jy = np.zeros(nx); jz = np.zeros(nx)
+    ex = np.array([along((i, j, k), (i + 1, j, k), x[i + 1] - x[i]) for i in range(nx - 1)])
+    jx[1:-1] = 0.5 * (ex[1:] + ex[:-1]); jx[0], jx[-1] = ex[0], ex[-1]
+    for i in range(nx):
+        a = along((i, j - 1, k), (i, j, k), yy[j] - yy[j - 1])
+        b = along((i, j, k), (i, j + 1, k), yy[j + 1] - yy[j])
+        jy[i] = 0.5 * (a + b)
+        jz[i] = along((i, j, k - 1), (i, j, k), zz[k] - zz[k - 1])
+    return x * 1e4, np.sqrt(jx ** 2 + jy ** 2 + jz ** 2)
+
+
+def devsim_j_vector(zd, nodes=None):
+    """DEVSIM: вектор J в узлах — наименьшие квадраты по плотностям тока на прилегающих рёбрах
+    (edge_j из run_ise.py; рёбра с нулевой площадью грани тока не несут и пропускаются)."""
+    r = np.stack([zd["x"], zd["y"], zd["z"]], 1)
+    a, b, je = zd["edge_a"], zd["edge_b"], zd["edge_j"]
+    ok = ~np.isnan(je); a, b, je = a[ok], b[ok], je[ok]
+    t = r[b] - r[a]; t /= np.linalg.norm(t, axis=1)[:, None]
+    N = len(r); AtA = np.zeros((N, 3, 3)); Atb = np.zeros((N, 3))
+    for idx in (a, b):                                  # проекция J на ребро известна в обоих концах
+        np.add.at(AtA, idx, t[:, :, None] * t[:, None, :])
+        np.add.at(Atb, idx, t * je[:, None])
+    sel = np.arange(N) if nodes is None else np.asarray(nodes)
+    J = np.full((len(sel), 3), np.nan)
+    good = np.linalg.matrix_rank(AtA[sel]) == 3
+    J[good] = np.linalg.solve(AtA[sel][good], Atb[sel][good][..., None])[..., 0]
+    return J
+
+
+def devsim_j_top_abs(path_npz, LZ=0.8, y=1.5):
+    """DEVSIM: |J| в узлах верхней грани на линии y = 1.5 (сетка ISE — узлы на этой линии есть)."""
+    zd = np.load(path_npz)
+    r = np.stack([zd["x"], zd["y"], zd["z"]], 1) * 1e4
+    sel = np.nonzero((np.abs(r[:, 2] - LZ) < 1e-6) & (np.abs(r[:, 1] - y) < 1e-6))[0]
+    sel = sel[np.argsort(r[sel, 0])]
+    J = devsim_j_vector(zd, sel)
+    return r[sel, 0], np.linalg.norm(J, axis=1), J

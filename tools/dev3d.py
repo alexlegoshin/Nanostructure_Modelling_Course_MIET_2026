@@ -252,6 +252,15 @@ def save_fields(path, dev=None, reg=None, mode=None):
         ia, ib = ee("node_index@n0"), ee("node_index@n1")
     np.add.at(node_current, ia.astype(np.int64), flux)
     np.add.at(node_current, ib.astype(np.int64), -flux)
+    extra = {}
+    if mode != "element":
+        # плотность тока на каждом ребре (вдоль n0 -> n1), без поправочного множителя CR:
+        # из неё собирается вектор J в узлах (py3d_plots.devsim_j_vector)
+        names = ds.get_edge_model_list(device=dev, region=reg)
+        cr = ee("CR") if "CR" in names else np.ones_like(flux)
+        jd = (ee("ElectronCurrent") + ee("HoleCurrent"))
+        extra = dict(edge_a=ia.astype(np.int32), edge_b=ib.astype(np.int32),
+                     edge_j=np.where(cr != 0, jd / np.where(cr != 0, cr, 1.0), np.nan))
     np.savez_compressed(path, x=get("x"), y=get("y"), z=get("z"), psi=get("Potential"),
                         n=get("Electrons"), p=get("Holes"), C=get("NetDoping"), tets=tets,
-                        node_current=node_current, area=get("ContactSurfaceArea"))
+                        node_current=node_current, area=get("ContactSurfaceArea"), **extra)

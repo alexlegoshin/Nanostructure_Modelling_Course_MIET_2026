@@ -5,9 +5,13 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 
-def _font(size):
-    for p in ("/System/Library/Fonts/Supplemental/Arial.ttf",
-              "/System/Library/Fonts/Helvetica.ttc"):
+def _font(size, bold=False):
+    import matplotlib
+    mpl = os.path.join(os.path.dirname(matplotlib.__file__), "mpl-data", "fonts", "ttf")
+    paths = (["/System/Library/Fonts/Supplemental/Arial Bold.ttf", os.path.join(mpl, "DejaVuSans-Bold.ttf")] if bold else
+             ["/System/Library/Fonts/Supplemental/Arial.ttf", "/System/Library/Fonts/Helvetica.ttc",
+              os.path.join(mpl, "DejaVuSans.ttf")])
+    for p in paths:
         if os.path.exists(p):
             try: return ImageFont.truetype(p, size)
             except Exception: pass
@@ -51,3 +55,67 @@ def pairs(items, path, title="", cell=(430, 330), pad=14):
         d.line([(pad, y + rowh - pad // 2), (W - pad, y + rowh - pad // 2)], fill="#ddd")
     im.save(path)
     return path
+
+
+def grid(rows, headers, path, cell=320, pad=12):
+    """Сетка сравнения одной картинкой: столбцы с заголовками, над каждой строкой — подпись.
+
+    rows — список (подпись, [пути к картинкам или None]); каждая картинка масштабируется
+    к ширине cell, ячейки строки выравниваются по высоте, отсутствующая — прочерк.
+    """
+    n = len(headers)
+    f_h, f_r = _font(22, bold=True), _font(19, bold=True)
+    head = 46
+    loaded = []
+    for label, paths in rows:
+        ims = []
+        for p in paths:
+            if p and os.path.exists(p):
+                im = Image.open(p).convert("RGB")
+                ims.append(im.resize((cell, round(im.height * cell / im.width)), Image.LANCZOS))
+            else:
+                ims.append(None)
+        h = max((im.height for im in ims if im), default=cell // 2)
+        loaded.append((label, ims, h))
+    cap = 34
+    W = n * cell + (n + 1) * pad
+    H = head + sum(cap + h + pad for _, _, h in loaded) + pad
+    out = Image.new("RGB", (W, H), "white")
+    d = ImageDraw.Draw(out)
+    for k, t in enumerate(headers):                                # заголовки столбцов
+        x = pad + k * (cell + pad) + cell / 2
+        d.text((x, head / 2), t, font=f_h, fill="black", anchor="mm")
+    d.line([(pad, head - 2), (W - pad, head - 2)], fill=(150, 150, 150), width=2)
+    y = head
+    for label, ims, h in loaded:
+        d.text((pad, y + cap / 2 + 2), label, font=f_r, fill=(40, 40, 40), anchor="lm")
+        y += cap
+        for k, im in enumerate(ims):
+            x = pad + k * (cell + pad)
+            if im:
+                out.paste(im, (x, y + (h - im.height) // 2))
+            else:
+                d.text((x + cell / 2, y + h / 2), "—", font=f_h, fill=(120, 120, 120), anchor="mm")
+        y += h + pad
+        d.line([(pad, y - pad / 2), (W - pad, y - pad / 2)], fill=(220, 220, 220), width=1)
+    out.save(path)
+    return path
+
+
+def lab12_grids(root):
+    """Сетки «эталон | расчёт» для работ 1 и 2 (картинки уже построены блокнотами)."""
+    labs = {"Lab1_diode_2D": [("Заряд и сетка", "z1_заряд"), ("Потенциал", "z1_потенциал"),
+                              ("Заряд в сечении", "z1_разрез")],
+            "Lab2_diode_2D_mesh": [("Заряд и сетка", "z2_заряд"), ("Потенциал", "z2_потенциал"),
+                                   ("Заряд в сечении", "z2_разрез"), ("ВАХ на двух сетках", "z3_вах"),
+                                   ("Потенциал, сравнение сеток", "z3_потенциал"),
+                                   ("Без внешнего напряжения: заряд", "z4_заряд"),
+                                   ("Без внешнего напряжения: сечение", "z4_разрез")]}
+    for lab, items in labs.items():
+        d = os.path.join(root, lab)
+        grid([(t, [os.path.join(d, "reference", f + ".png"), os.path.join(d, "results", f + ".png")])
+              for t, f in items], ["эталон", "расчёт"], os.path.join(d, "results", "сравнение.png"), cell=460)
+
+
+if __name__ == "__main__":
+    lab12_grids(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))

@@ -120,11 +120,7 @@ N<sub>As</sub> = 1.0·10¹⁷ см⁻³. Базовая структура в м
 параметрах, а визуализация потребовала попиксельной калибровки по эталону. Обе
 задачи разобраны в [заметке об ISE на практике](notes/ise_in_practice.md).
 
-| эталон | расчёт |
-|---|---|
-| ![](Lab1_diode_2D/reference/z1_заряд.png) | ![](Lab1_diode_2D/results/z1_заряд.png) |
-| ![](Lab1_diode_2D/reference/z1_потенциал.png) | ![](Lab1_diode_2D/results/z1_потенциал.png) |
-| ![](Lab1_diode_2D/reference/z1_разрез.png) | ![](Lab1_diode_2D/results/z1_разрез.png) |
+![](Lab1_diode_2D/results/сравнение.png)
 
 Сетка совпадает с эталонной поузлово. Ток при 4 В составляет 0.00580 А при
 эталонном значении 0.00577 А (+0.5%).
@@ -161,15 +157,7 @@ N<sub>B</sub> = 1.4·10¹⁷ см⁻³, N<sub>As</sub> = 1.0·10¹⁷ см⁻³)
 Шаг по Ox у Mesh1 и шаг по Oy у Mesh2 не меняются — так по эталону
 ([подробнее](notes/ise_in_practice.md#сетка-генератор-делит-пополам-пока-не-влезет)).
 
-| эталон | расчёт |
-|---|---|
-| ![](Lab2_diode_2D_mesh/reference/z2_заряд.png) | ![](Lab2_diode_2D_mesh/results/z2_заряд.png) |
-| ![](Lab2_diode_2D_mesh/reference/z2_потенциал.png) | ![](Lab2_diode_2D_mesh/results/z2_потенциал.png) |
-| ![](Lab2_diode_2D_mesh/reference/z2_разрез.png) | ![](Lab2_diode_2D_mesh/results/z2_разрез.png) |
-| ![](Lab2_diode_2D_mesh/reference/z3_вах.png) | ![](Lab2_diode_2D_mesh/results/z3_вах.png) |
-| ![](Lab2_diode_2D_mesh/reference/z3_потенциал.png) | ![](Lab2_diode_2D_mesh/results/z3_потенциал.png) |
-| ![](Lab2_diode_2D_mesh/reference/z4_заряд.png) | ![](Lab2_diode_2D_mesh/results/z4_заряд.png) |
-| ![](Lab2_diode_2D_mesh/reference/z4_разрез.png) | ![](Lab2_diode_2D_mesh/results/z4_разрез.png) |
+![](Lab2_diode_2D_mesh/results/сравнение.png)
 
 Ток при 4 В составляет 0.00548 А и совпадает с эталоном. На мелкой сетке он на
 5% ниже, чем на крупной (0.00548 и 0.00580 А). Работы 1 и 2 приняты.
@@ -224,20 +212,12 @@ N<sub>B</sub> = 1.4·10¹⁷ см⁻³ (сверху), N<sub>As</sub> = 1.0·10�
 
 ### Результаты
 
-| | эталон | ISE | самописный решатель | DEVSIM |
-|---|---|---|---|---|
-| структура A | ![](Lab3_diode_3D/reference/z1_структура_A.png) | ![](Lab3_diode_3D/results/ise/z1_структура_A.png) | — | ![](Lab3_diode_3D/results/devsim_ise/z1_структура_A.png) |
-| структура B | ![](Lab3_diode_3D/reference/z1_структура_B.png) | ![](Lab3_diode_3D/results/ise/z1_структура_B.png) | — | ![](Lab3_diode_3D/results/devsim_ise/z1_структура_B.png) |
-| ВАХ | ![](Lab3_diode_3D/reference/z2_вах.png) | ![](Lab3_diode_3D/results/ise/z2_вах.png) | ![](Lab3_diode_3D/results/python/z2_вах.png) | ![](Lab3_diode_3D/results/devsim_ise/z2_вах.png) |
-| ток вдоль границы | ![](Lab3_diode_3D/reference/z2_ток_вдоль_границы.png) | — | ![](Lab3_diode_3D/results/python/z2_ток_вдоль_границы.png) | ![](Lab3_diode_3D/results/devsim_ise/z2_ток_вдоль_границы.png) |
-| A, сечение y = 1.5 | ![](Lab3_diode_3D/reference/z3_A_сечение_y1.5.png) | ![](Lab3_diode_3D/results/ise/z3_A_сечение_y1.5.png) | ![](Lab3_diode_3D/results/python/z3_A_сечение_y1.5.png) | ![](Lab3_diode_3D/results/devsim_ise/z3_A_сечение_y1.5.png) |
-| B, сечение y = 1.5 | ![](Lab3_diode_3D/reference/z3_B_сечение_y1.5.png) | — | ![](Lab3_diode_3D/results/python/z3_B_сечение_y1.5.png) | ![](Lab3_diode_3D/results/devsim_ise/z3_B_сечение_y1.5.png) |
-| B, сечение x = 0.75 | ![](Lab3_diode_3D/reference/z3_B_сечение_x0.75.png) | — | ![](Lab3_diode_3D/results/python/z3_B_сечение_x0.75.png) | ![](Lab3_diode_3D/results/devsim_ise/z3_B_сечение_x0.75.png) |
-| B, сечение x = 0.25 | ![](Lab3_diode_3D/reference/z3_B_сечение_x0.25.png) | — | ![](Lab3_diode_3D/results/python/z3_B_сечение_x0.25.png) | ![](Lab3_diode_3D/results/devsim_ise/z3_B_сечение_x0.25.png) |
+![](Lab3_diode_3D/results/сравнение.png)
 
-Для ISE приведён только диод A, поэтому на его ВАХ одна кривая. Самописный
+Для ISE приведён только диод A, поэтому на его ВАХ одна кривая; структура B в
+этом столбце — огрублённая сетка, на которой ISE пытался считать диод B. Самописный
 решатель работает на тензорной сетке, поэтому изображения структуры для него не
-приводятся. Полные столбцы — на сводных листах: [DEVSIM](Lab3_diode_3D/results/devsim_ise/СВОДНЫЙ_ЛИСТ.png),
+приводятся. Все иллюстрации построены в ракурсе и размере эталонных. Полные столбцы — на сводных листах: [DEVSIM](Lab3_diode_3D/results/devsim_ise/СВОДНЫЙ_ЛИСТ.png),
 [самописный решатель](Lab3_diode_3D/results/python/СВОДНЫЙ_ЛИСТ.png),
 [ISE](Lab3_diode_3D/results/ise/СВОДНЫЙ_ЛИСТ.png).
 

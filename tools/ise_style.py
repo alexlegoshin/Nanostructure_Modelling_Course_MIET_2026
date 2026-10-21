@@ -214,3 +214,57 @@ def xy(series, path, size=(465, 373), xlim=None, ylim=None, legend=True):
     fig.savefig(path, dpi=100, facecolor="white")
     plt.close(fig)
     return path
+
+
+# ------------------------------------------------------- графики лабы 3 (inspect)
+COURIER = ["Courier New", "Courier", "DejaVu Sans Mono", "monospace"]
+HELV = ["Helvetica", "Arial", "DejaVu Sans"]
+PX = 0.72                                   # 1 пиксель в пунктах при dpi = 100
+
+
+def xy_ref(series, path, size, frame, xlabel, ylabel, xstep, ystep,
+           xfmt="{:g}", yfmt="{:g}", xlim=None, ylim=None, ylabel_x=12, xlabel_y=None):
+    """График в стиле эталонов лабы 3 (inspect): рамка в заданных пикселях, оси ровно
+    по данным, пунктирная сетка по основным засечкам, засечки наружу, по 4 коротких
+    между основными, линии в 2 пикселя без сглаживания.
+
+    series — список (x, y, цвет); frame = (левый, правый, верхний, нижний) край рамки, px;
+    xlabel — пара (величина, единица) — в эталоне между ними большой пробел.
+    """
+    W, H = size
+    l, r, t, b = frame
+    fig = plt.figure(figsize=((W + 0.1) / 100.0, (H + 0.1) / 100.0), dpi=100)   # без округления вниз
+    ax = fig.add_axes([l / W, 1 - b / H, (r - l) / W, (b - t) / H])
+    xs = np.concatenate([np.asarray(s[0], float) for s in series])
+    ys = np.concatenate([np.asarray(s[1], float) for s in series])
+    for x, y, col in series:
+        ax.plot(x, y, color=col, lw=2 * PX, antialiased=False, solid_joinstyle="miter")
+    ax.set_xlim(*(xlim or (xs.min(), xs.max())))
+    ax.set_ylim(*(ylim or (ys.min(), ys.max())))
+    from matplotlib.ticker import MultipleLocator
+    ax.xaxis.set_major_locator(MultipleLocator(xstep))
+    ax.yaxis.set_major_locator(MultipleLocator(ystep))
+    ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+    ax.yaxis.set_minor_locator(AutoMinorLocator(5))
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: xfmt.format(v) if abs(v) > 1e-12 else "0"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: yfmt.format(v) if abs(v) > 1e-12 else "0"))
+    ax.tick_params(which="major", direction="out", length=8 * PX, width=1.5 * PX,
+                   top=False, right=False, labelsize=13, pad=5 * PX)
+    ax.tick_params(which="minor", direction="out", length=5 * PX, width=1.5 * PX,
+                   top=False, right=False)
+    ax.grid(True, which="major", color="k", lw=1 * PX, ls=(0, (3, 3)))
+    for sp in ax.spines.values():
+        sp.set_linewidth(2 * PX); sp.set_color("k")
+    for tl in ax.get_xticklabels() + ax.get_yticklabels():
+        tl.set_fontfamily(COURIER); tl.set_fontweight("bold")
+    # подписи осей — в тех же местах, что у inspect
+    fig.text(ylabel_x / W, 1 - (t + b) / 2 / H, ylabel, rotation=90, ha="center", va="center",
+             fontfamily=HELV, fontweight="bold", fontsize=17)
+    q, u = xlabel
+    yb = (xlabel_y if xlabel_y is not None else b + 50) / H
+    cx = (l + r) / 2 / W
+    fig.text(cx - 0.05, 1 - yb, q, ha="right", va="center", fontfamily=COURIER, fontweight="bold", fontsize=13)
+    fig.text(cx + 0.03, 1 - yb, "(%s)" % u, ha="left", va="center", fontfamily=COURIER, fontweight="bold", fontsize=13)
+    fig.savefig(path, dpi=100, facecolor="white")
+    plt.close(fig)
+    return path
