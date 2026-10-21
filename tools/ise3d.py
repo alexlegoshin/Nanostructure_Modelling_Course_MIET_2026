@@ -21,8 +21,9 @@ NB = len(ise.RGB)                      # 31 полоса
 ZSTRETCH = 1.45                        # по Oz вытянуто, иначе прибор нечитаемо плоский
 
 
-def _colors_on_grid(grid, vals, nu=160, nv=96):
-    """Поле с треугольной сетки на регулярную, уже в виде цветов полос."""
+def _colors_on_grid(grid, vals, nu=160, nv=96, lo=None, hi=None):
+    """Поле с треугольной сетки на регулярную, уже в виде цветов полос.
+    lo, hi — границы шкалы (в ареасинусе); по умолчанию — min..max самого сечения."""
     v = grid["vertices"]
     tri = Triangulation(v[:, 0], v[:, 1], dfise.triangles(grid))
     f = LinearTriInterpolator(tri, ise._t(vals))       # интерполируем преобразованное
@@ -30,7 +31,8 @@ def _colors_on_grid(grid, vals, nu=160, nv=96):
     w = np.linspace(v[:, 1].min(), v[:, 1].max(), nv)
     U, W = np.meshgrid(u, w)
     T = f(U, W)
-    lo, hi = float(ise._t(vals).min()), float(ise._t(vals).max())
+    lo = float(ise._t(vals).min()) if lo is None else lo
+    hi = float(ise._t(vals).max()) if hi is None else hi
     if hi <= lo:
         hi = lo + 1.0
     k = np.clip(((np.ma.filled(T, lo) - lo) / (hi - lo) * NB).astype(int), 0, NB - 1)
@@ -277,9 +279,11 @@ def structure_ref(path, verts, tris, dop, LX, LY, LZ, anode, cam, size):
     return path
 
 
-def bands_rgba(F, lo=None, hi=None):
-    """Поле -> цвета 31 полосы в шкале ареасинуса (как у picasso), по min..max поля."""
-    t = ise._t(F)
+def bands_rgba(F, lo=None, hi=None, transform=True):
+    """Поле -> цвета 31 полосы, по умолчанию в шкале ареасинуса (как у picasso).
+    lo, hi — границы шкалы в преобразованных величинах (для общей шкалы на весь прибор);
+    transform=False — поле уже в нужной шкале (например, lg|J|)."""
+    t = ise._t(F) if transform else np.asarray(F, float)
     lo = float(np.nanmin(t)) if lo is None else lo
     hi = float(np.nanmax(t)) if hi is None else hi
     if hi <= lo:
@@ -333,10 +337,10 @@ def cut_ref(path, P3, rgba, kind, value, LX, LY, LZ, anode, cam, size):
     return path
 
 
-def plane_from_ise_cut(grid, vals, kind, value, nu=160, nw=96):
+def plane_from_ise_cut(grid, vals, kind, value, nu=160, nw=96, lo=None, hi=None):
     """Сечение ISE (dfisetools -cut) -> точки плоскости в координатах прибора и цвета.
     У сечений поперёк прибора первая координата сечения — это -x, вдоль — y."""
-    U, W, rgba = _colors_on_grid(grid, vals, nu=nu, nv=nw)
+    U, W, rgba = _colors_on_grid(grid, vals, nu=nu, nv=nw, lo=lo, hi=hi)
     if kind == "y":
         P3 = np.stack([-U, np.full_like(U, value), W], -1)
     else:

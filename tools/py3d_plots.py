@@ -293,3 +293,51 @@ def devsim_j_top_abs(path_npz, LZ=0.8, y=1.5):
     sel = sel[np.argsort(r[sel, 0])]
     J = devsim_j_vector(zd, sel)
     return r[sel, 0], np.linalg.norm(J, axis=1), J
+
+
+# ------------------------------------------------ поля для сечений в шкале эталона
+def j_abs_tensor(z):
+    """Самописный решатель: |J| во всех узлах тензорной сетки (потоки по рёбрам x, y, z, средние по узлу)."""
+    import dd3d
+    psi, n, p, C = z["psi"], z["n"], z["p"], z["C"]
+    axes = (z["x"], z["y"], z["z"])
+    comps = []
+    for ax in range(3):
+        sl0 = [slice(None)] * 3; sl1 = [slice(None)] * 3
+        sl0[ax] = slice(0, -1); sl1[ax] = slice(1, None)
+        a, b = tuple(sl0), tuple(sl1)
+        h = np.diff(axes[ax]).reshape([-1 if i == ax else 1 for i in range(3)])
+        Nt = 0.5 * (np.abs(C[a]) + np.abs(C[b]))
+        e = _sg(psi[a], psi[b], n[a], n[b], p[a], p[b], Nt, h)        # на рёбрах
+        node = np.zeros_like(psi); cnt = np.zeros_like(psi)
+        node[a] += e; cnt[a] += 1; node[b] += e; cnt[b] += 1
+        comps.append(node / cnt)
+    return np.sqrt(sum(c ** 2 for c in comps))
+
+
+def cut_plane_field(z, F3, kind, value, fine=5):
+    """Срез произвольного поля F3[x, y, z] тензорной сетки (как cut_plane, но не только заряд)."""
+    if kind == "y":
+        j = int(np.argmin(np.abs(z["y"] - value * 1e-4)))
+        u, w, F = z["x"] * 1e4, z["z"] * 1e4, F3[:, j, :]
+    else:
+        j = int(np.argmin(np.abs(z["x"] - value * 1e-4)))
+        u, w, F = z["y"] * 1e4, z["z"] * 1e4, F3[j, :, :]
+    if fine > 1:
+        from scipy.interpolate import RegularGridInterpolator
+        f = RegularGridInterpolator((u, w), F, method="linear")
+        u2 = np.linspace(u[0], u[-1], len(u) * fine); w2 = np.linspace(w[0], w[-1], len(w) * fine)
+        U, W = np.meshgrid(u2, w2, indexing="ij")
+        F = f(np.stack([U.ravel(), W.ravel()], axis=1)).reshape(U.shape); u, w = u2, w2
+    return u, w, F
+
+
+def devsim_plane(zd, vals, kind, value, nu=120, nw=96):
+    """DEVSIM: узловые значения vals на регулярную решётку плоскости (по тетраэдрам сетки)."""
+    pts = np.stack([zd["x"], zd["y"], zd["z"]], axis=1) * 1e4
+    u = np.linspace(pts[:, 0].min(), pts[:, 0].max(), nu) if kind == "y" else \
+        np.linspace(pts[:, 1].min(), pts[:, 1].max(), nu)
+    w = np.linspace(pts[:, 2].min(), pts[:, 2].max(), nw)
+    U, W = np.meshgrid(u, w, indexing="ij")
+    P = np.stack([U, np.full_like(U, value), W], -1) if kind == "y" else np.stack([np.full_like(U, value), U, W], -1)
+    return u, w, tet_interp(zd, vals, P.reshape(-1, 3)).reshape(U.shape)

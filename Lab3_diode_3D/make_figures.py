@@ -42,19 +42,17 @@ TITLE = ("Лабораторная работа 3 — 3D диод с резки�
          "Вариант 2:  d = 0.8 мкм,  NB = 1.4e+17,  NAs = 1.0e+17")
 
 # рамки графиков эталона, px: (левый, правый, верхний, нижний) — сняты с reference/*.png
+# пределы осей — тоже эталонные (по пикселям засечек), одинаковые для всех столбцов
 IV = dict(size=(477, 482), frame=(103, 470, 6, 417), xlabel=("U", "V"), ylabel="I  (A)",
-          xstep=1, ystep=0.002, yfmt="{:.3f}", xlabel_y=468)
+          xstep=1, ystep=0.002, yfmt="{:.3f}", xlabel_y=468, xlim=(0, 4), ylim=(0, 0.0053032))
 JT = dict(size=(498, 503), frame=(113, 491, 4, 438), xlabel=("x", "mkm"), ylabel="J  (A/cm^2)",
-          xstep=0.2, ystep=100000, xfmt="{:g}", yfmt="{:.0f}", xlabel_y=486)
+          xstep=0.2, ystep=100000, xfmt="{:g}", yfmt="{:.0f}", xlabel_y=486,
+          xlim=(0, 1), ylim=(37716, 488235))
 
 
-def jt(series, path, **kw):
-    """График тока вдоль границы: шаг засечек по Y — по диапазону данных, как у inspect."""
-    ys = np.concatenate([np.asarray(s[1], float) for s in series])
-    span = (kw.get("ylim") or (ys.min(), ys.max()))
-    span = span[1] - span[0]
-    step = 100000 if span <= 6e5 else 200000 if span <= 1.6e6 else 500000
-    ise.xy_ref(series, path, **{**JT, "ystep": step, **kw})
+def jt(series, path):
+    ise.xy_ref(series, path, **JT)
+
 
 _CAM = {}
 
@@ -80,12 +78,18 @@ def j_abs(d):
     return np.sqrt((v ** 2).sum(1)) if v.ndim == 2 else np.abs(v)
 
 
-def plane(kind, value, u, w, F):
-    """Срез (u — x или y, w — z, в мкм; F[u, w]) -> точки плоскости и цвета полос."""
+# Что нарисовано на эталонных сечениях (проверено попиксельно, расхождение 0.5–2.8 полосы
+# из 31): поперечные y = 1.5 — заряд в шкале ареасинуса, продольные x = 0.75 и x = 0.25 —
+# модуль плотности тока lg|J|, хотя в задании указан заряд. Шкала — общая на весь прибор.
+QUANTITY = {"y": "charge", "x": "lgJ"}
+
+
+def plane(kind, value, u, w, F, lo, hi, transform=True):
+    """Срез (u — x или y, w — z, в мкм; F[u, w]) -> точки плоскости и цвета полос в шкале lo..hi."""
     U, W = np.meshgrid(u, w, indexing="ij")
     P3 = (np.stack([U, np.full_like(U, value), W], -1) if kind == "y"
           else np.stack([np.full_like(U, value), U, W], -1))
-    return P3, ise3d.bands_rgba(F)
+    return P3, ise3d.bands_rgba(F, lo, hi, transform=transform)
 
 
 def structure(out, name, diode, verts, tris, dop):
@@ -108,7 +112,9 @@ def figures_ise():
     VA, IA = iv_ise(ISE + "sA_des.plt")
     ise.xy_ref([(VA, IA, "r")], out + "z2_вах.png", **IV)
     a = viz.read_plt(ISE + "AyTop.plt"); ja = j_abs(a)
-    jt([(np.asarray(a["Distance"]), ja, "r")], out + "z2_ток_вдоль_границы.png", ylim=(0, ja.max()))
+    jt([(np.asarray(a["Distance"]), ja, "r")], out + "z2_ток_вдоль_границы.png")
+    # трёхмерное поле ISE из виртуалки не выгружалось — шкала по самому сечению
+    # (для поперечных сечений она с общей практически совпадает)
     g = dfise.read_grid(ISE + "Ay.grd"); d = dfise.read_dataset(ISE + "Ay.dat", g)
     cut(out, "z3_A_сечение_y1.5", "A", "y", 1.5, *ise3d.plane_from_ise_cut(g, d["SpaceCharge"], "y", 1.5))
     for f in ("z3_B_сечение_y1.5", "z3_B_сечение_x0.75", "z3_B_сечение_x0.25"):
@@ -130,7 +136,13 @@ def figures_python():
     jt([(xb, jb, "k"), (xa, ja, "r")], out + "z2_ток_вдоль_границы.png")
     z = {"A": np.load(PY + "field_A.npz"), "B": np.load(PY + "field_B.npz")}
     for nm, t, kind, value in CUTS:
-        cut(out, nm, t, kind, value, *plane(kind, value, *pp.cut_plane(z[t], kind, value)))
+        if QUANTITY[kind] == "charge":
+            q = ise._t(pp.charge(z[t]))
+            pl = plane(kind, value, *pp.cut_plane(z[t], kind, value), q.min(), q.max())
+        else:
+            L = np.log10(pp.j_abs_tensor(z[t]))
+            pl = plane(kind, value, *pp.cut_plane_field(z[t], L, kind, value), L.min(), L.max(), transform=False)
+        cut(out, nm, t, kind, value, *pl)
     print("самописный решатель: A %.5f А, B %.5f А при 4 В" % (A["I"][-1], B["I"][-1]))
 
 
@@ -154,7 +166,13 @@ def figures_devsim(name, fA, fB, ivA, ivB):
         xa, ja, _ = pp.devsim_j_top(files[0], ANODE["A"]); xb, jb, _ = pp.devsim_j_top(files[1], ANODE["B"])
     jt([(xb, jb, "k"), (xa, ja, "r")], out + "z2_ток_вдоль_границы.png")
     for nm, t, kind, value in CUTS:
-        cut(out, nm, t, kind, value, *plane(kind, value, *pp.devsim_cut(z[t], kind, value)))
+        if QUANTITY[kind] == "charge":
+            q = ise._t(pp.charge(z[t]))
+            pl = plane(kind, value, *pp.devsim_cut(z[t], kind, value), q.min(), q.max())
+        else:
+            L = np.log10(np.linalg.norm(pp.devsim_j_vector(z[t]), axis=1))
+            pl = plane(kind, value, *pp.devsim_plane(z[t], L, kind, value), L.min(), L.max(), transform=False)
+        cut(out, nm, t, kind, value, *pl)
     return out
 
 
