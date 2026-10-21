@@ -1,4 +1,4 @@
-# Сбор заряда после удара тяжёлого иона
+# Charge Collection After Heavy-Ion Strikes: A Material Parameter Sweep in a 2001 TCAD Solver
 
 [Русский](#русский) · [English](#english) · [← к README](../README.md)
 

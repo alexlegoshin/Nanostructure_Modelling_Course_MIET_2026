@@ -1,4 +1,4 @@
-# DEVSIM в 3D: воспроизведение результатов ISE в открытом решателе
+# Validating DEVSIM Against ISE in 3D: Control-Volume Error, ISE Physics Port and the 2 µm Reference
 
 [← к README](../README.md)
 

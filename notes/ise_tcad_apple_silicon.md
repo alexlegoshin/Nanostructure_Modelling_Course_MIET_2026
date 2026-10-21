@@ -1,4 +1,4 @@
-# ISE TCAD 7.0 на Apple Silicon
+# ISE TCAD 7.0 on Apple Silicon: Running a 2001 Semiconductor Package on a MacBook Air M1
 
 [Русский](#русский) · [English](#english) · [← к README](../README.md)
 

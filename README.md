@@ -43,11 +43,11 @@ ISE запущен в эмулированной Windows XP и управляе�
 
 | | |
 |---|---|
-| [ISE TCAD 7.0 на Apple Silicon](notes/ise_tcad_apple_silicon.md) | запуск пакета 2001 года на M1: эмуляция XP, управление по telnet, ограничения при работе с путями и окнами, формат DF-ISE (рус. / англ.) |
-| [ISE TCAD на практике](notes/ise_in_practice.md) | фактическое поведение генератора сетки, воспроизведение эталонной визуализации, причины остановки трёхмерного расчёта |
-| [DEVSIM в 3D](notes/devsim_3d.md) | ошибка DEVSIM в объёмах ячеек в 3D, перенос физических моделей ISE, толщина структуры эталона, визуализация результатов DEVSIM |
-| [Рабочая станция FX-8320 + TITAN X](notes/workstation_fx8320_titanx.md) | ложная сходимость MKL Pardiso, прямой решатель на GPU, точность FP64 и float128 |
-| [Сбор заряда после удара тяжёлого иона](notes/heavy_ion_charge_collection.md) | вне программы курса: развёртка параметров материала в ISE (рус. / англ.) |
+| [ISE TCAD 7.0 on Apple Silicon: Running a 2001 Semiconductor Package on a MacBook Air M1](notes/ise_tcad_apple_silicon.md) | запуск пакета 2001 года на M1: эмуляция XP, управление по telnet, ограничения при работе с путями и окнами, формат DF-ISE (рус. / англ.) |
+| [Working with ISE TCAD: Mesh Refinement Rules, Reference-Matched Rendering and 3D Convergence Failures](notes/ise_in_practice.md) | как генератор `mesh` на самом деле дробит сетку, калибровка визуализации по эталону, почему трёхмерный расчёт диода B не сошёлся |
+| [Validating DEVSIM Against ISE in 3D: Control-Volume Error, ISE Physics Port and the 2 µm Reference](notes/devsim_3d.md) | ошибка DEVSIM в объёмах ячеек в 3D и её поправка, перенос физических моделей ISE, проверка по ISE, вывод о толщине 2 мкм у эталона |
+| [DEVSIM on a 2012 Workstation (FX-8320, TITAN X Pascal): MKL Pardiso False Convergence, cuDSS GPU Solver, FP64 and float128](notes/workstation_fx8320_titanx.md) | ложная сходимость MKL Pardiso, прямой решатель cuDSS на видеокарте, эмуляция FP64 на Pascal, точность float128 |
+| [Charge Collection After Heavy-Ion Strikes: A Material Parameter Sweep in a 2001 TCAD Solver](notes/heavy_ion_charge_collection.md) | вне программы курса: развёртка параметров материала в ISE (рус. / англ.) |
 
 ## Структура репозитория
 

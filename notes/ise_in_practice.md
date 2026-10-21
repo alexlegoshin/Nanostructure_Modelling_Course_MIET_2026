@@ -1,4 +1,4 @@
-# ISE TCAD на практике: сетка, визуализация, длительные расчёты
+# Working with ISE TCAD: Mesh Refinement Rules, Reference-Matched Rendering and 3D Convergence Failures
 
 [← к README](../README.md)
 

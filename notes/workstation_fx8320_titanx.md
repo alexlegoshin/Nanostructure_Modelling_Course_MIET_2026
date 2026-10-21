@@ -1,4 +1,4 @@
-# Рабочая станция: FX-8320 и TITAN X Pascal
+# DEVSIM on a 2012 Workstation (FX-8320, TITAN X Pascal): MKL Pardiso False Convergence, cuDSS GPU Solver, FP64 and float128
 
 [← к README](../README.md)
 
