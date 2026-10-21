@@ -39,7 +39,7 @@ def main():
     ap.add_argument("--fast", action="store_true",
                     help="без float128 (мелкие сетки): ниже 0.7 В допуск 1e-5 — ток там ~1e-6 А и меньше")
     ap.add_argument("--lz", type=float, default=0.8,
-                    help="толщина, мкм: 2 — базовая структура методички (сетка растягивается по z)")
+                    help="толщина, мкм (по умолчанию 0.8 — вариант 2; сетка ISE масштабируется по z)")
     ap.add_argument("--tensor", type=int, default=0, metavar="N",
                     help="тензорная сетка на осях ISE, каждый отрезок делится на N (tools/tensor_mesh.py)")
     ap.add_argument("--gmsh", type=float, default=None, metavar="SCALE",
@@ -96,7 +96,7 @@ def main():
             print("анод B вырезан из сетки A: %d треугольников из %d" % (keep.sum(), len(tri)), flush=True)
         if a.lz != 0.8:
             # сетка ISE по варианту 2 — это сетка методички, сжатая по z в 2/0.8 = 2.5 раза;
-            # растянув обратно, получаем сетку преподавателя для базовой толщины 2 мкм
+            # масштабирование сетки ISE по z под другую толщину
             g["vertices"] = g["vertices"] * np.array([1.0, 1.0, a.lz / 0.8])
             print("сетка растянута по z до толщины %g мкм" % a.lz, flush=True)
         print("сетка ISE (%s): %d узлов" % (src, len(g["vertices"])), flush=True)

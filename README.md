@@ -45,7 +45,7 @@ ISE запущен в эмулированной Windows XP и управляе�
 |---|---|
 | [ISE TCAD 7.0 on Apple Silicon: Running a 2001 Semiconductor Package on a MacBook Air M1](notes/ise_tcad_apple_silicon.md) | запуск пакета 2001 года на M1: эмуляция XP, управление по telnet, ограничения при работе с путями и окнами, формат DF-ISE (рус. / англ.) |
 | [Working with ISE TCAD: Mesh Refinement Rules, Reference-Matched Rendering and 3D Convergence Failures](notes/ise_in_practice.md) | как генератор `mesh` на самом деле дробит сетку, калибровка визуализации по эталону, почему трёхмерный расчёт диода B не сошёлся |
-| [Validating DEVSIM Against ISE in 3D: Control-Volume Error, ISE Physics Port and the 2 µm Reference](notes/devsim_3d.md) | ошибка DEVSIM в объёмах ячеек в 3D и её поправка, перенос физических моделей ISE, проверка по ISE, вывод о толщине 2 мкм у эталона |
+| [Validating DEVSIM Against ISE in 3D: Control-Volume Error, ISE Physics Port and Comparison with the Reference](notes/devsim_3d.md) | ошибка DEVSIM в объёмах ячеек в 3D и её поправка, перенос физических моделей ISE, проверка по ISE, сравнение с эталоном варианта 2 |
 | [DEVSIM on a 2012 Workstation (FX-8320, TITAN X Pascal): MKL Pardiso False Convergence, cuDSS GPU Solver, FP64 and float128](notes/workstation_fx8320_titanx.md) | ложная сходимость MKL Pardiso, прямой решатель cuDSS на видеокарте, эмуляция FP64 на Pascal, точность float128 |
 | [Charge Collection After Heavy-Ion Strikes: A Material Parameter Sweep in a 2001 TCAD Solver](notes/heavy_ion_charge_collection.md) | вне программы курса: развёртка параметров материала в ISE (рус. / англ.) |
 
@@ -217,8 +217,7 @@ N<sub>B</sub> = 1.4·10¹⁷ см⁻³ (сверху), N<sub>As</sub> = 1.0·10�
    управления шагом, огрубление сетки у анода, память виртуальной машины до 3 ГБ. Расчёт
    останавливался на 0.04–0.4 В, иногда расходясь в `1.#QNAN`.
 3. Вероятная причина — особенность поля на краю анода B, который лежит на
-   середине грани, при сжатой в 2.5 раза по высоте сетке варианта 2 (у
-   преподавателя B считался при 2 мкм).
+   середине грани, при сжатой в 2.5 раза по высоте сетке варианта 2.
 
 По этой причине диод B рассчитан в DEVSIM на той же сетке и с теми же физическими
 моделями. Подробности — в [заметке об ISE на практике](notes/ise_in_practice.md#3d-в-ise-решатель-память-и-ложные-признаки-успеха).
@@ -249,10 +248,11 @@ N<sub>B</sub> = 1.4·10¹⁷ см⁻³ (сверху), N<sub>As</sub> = 1.0·10�
 - **DEVSIM и ISE** (слева, 0.8 мкм, диод A): расхождение 1–2% на 1.5–4 В и
   0.04% на малых токах. Физические модели и сетка перенесены корректно, что
   обосновывает использование DEVSIM для диода B.
-- **DEVSIM и эталон** (справа): совпадение в пределах 1–3% на 2–4 В достигается
-  только при толщине 2 мкм — базовой структуре методических указаний. По всей
-  видимости, эталон варианта 2 рассчитан для этой толщины, а не для 0.8 мкм
-  ([разбор](notes/devsim_3d.md#эталон-посчитан-при-толщине-2-мкм)).
+- **DEVSIM и эталон варианта 2** (справа): на насыщении совпадение в пределах 1%
+  (диод A: 5.29 и 5.30 мА при 3.95 В), на изломе ВАХ эталона мягче (при 1.5 В —
+  3.0 мА против 3.9), ток диода B на 11% ниже. Эталоны построены в Sentaurus TCAD 2012:
+  другой генератор сетки и, по всей видимости, другие модели по умолчанию
+  ([разбор](notes/devsim_3d.md#сравнение-с-эталоном-варианта-2)).
 - **Сходимость по сетке:** на тензорной сетке 20 тыс. узлов ток отличается
   от сетки ISE меньше чем на 0.5%.
 - **Воспроизводимость:** ВАХ, рассчитанные на двух разных машинах (M1 и x86), совпадают до 10⁻¹⁵.
@@ -266,18 +266,15 @@ N<sub>B</sub> = 1.4·10¹⁷ см⁻³ (сверху), N<sub>As</sub> = 1.0·10�
 
 | | диод A, мА | диод B, мА | B ниже A |
 |---|---|---|---|
-| эталон методички | 5.30 | 3.25 | 38.7% |
-| DEVSIM, 2 мкм | 5.44 | 3.14 | 42.2% |
-| **DEVSIM, 0.8 мкм (вариант 2)** | **5.29** | **2.88** | **45.5%** |
-| ISE, 0.8 мкм | 5.19 | — | — |
-| самописный решатель, 0.8 мкм | 6.91 | 3.62 | 47.6% |
+| эталон варианта 2 | 5.30 | 3.25 | 38.7% |
+| **DEVSIM** | **5.29** | **2.88** | **45.5%** |
+| ISE | 5.19 | — | — |
+| самописный решатель | 6.91 | 3.62 | 47.6% |
 
 Площадь анода B вдвое меньше, а ток меньше лишь в 1.8 раза: плотность тока под
 узким анодом выше за счёт растекания тока в сторону и его концентрации у
 свободного края анода. На графике плотности тока у диода B виден острый максимум
-на краю x = 0.5, у диода A распределение равномерное. При толщине 0.8 мкм ВАХ
-выходит на насыщение раньше, чем при 2 мкм: в более коротком приборе
-последовательное сопротивление и насыщение скорости ограничивают ток уже к 2 В.
+на краю x = 0.5, у диода A распределение равномерное.
 
 <details>
 <summary>Файлы работы</summary>
@@ -293,8 +290,7 @@ N<sub>B</sub> = 1.4·10¹⁷ см⁻³ (сверху), N<sub>As</sub> = 1.0·10�
 | [ise/sA_des.plt](Lab3_diode_3D/ise/sA_des.plt), [sB_des.plt](Lab3_diode_3D/ise/sB_des.plt) | ВАХ ISE |
 | [ise/Ay.grd](Lab3_diode_3D/ise/Ay.grd), [By.grd](Lab3_diode_3D/ise/By.grd), [Bx75.grd](Lab3_diode_3D/ise/Bx75.grd), [Bx25.grd](Lab3_diode_3D/ise/Bx25.grd) (+ `.dat`), [AyTop.plt](Lab3_diode_3D/ise/AyTop.plt), [ByTop.plt](Lab3_diode_3D/ise/ByTop.plt) | срезы ISE |
 | [devsim/run_ise.py](Lab3_diode_3D/devsim/run_ise.py), [tools/dev_ise.py](tools/dev_ise.py) | DEVSIM с физикой ISE — [запуск и разбор](notes/devsim_3d.md#файлы-и-запуск) |
-| [devsim/iv_ise_A_isemesh_clip.json](Lab3_diode_3D/devsim/iv_ise_A_isemesh_clip.json), [iv_ise_B_isemeshA_clip.json](Lab3_diode_3D/devsim/iv_ise_B_isemeshA_clip.json) | ВАХ DEVSIM, 0.8 мкм |
-| [devsim/iv_ise_A_isemesh_lz2_clip.json](Lab3_diode_3D/devsim/iv_ise_A_isemesh_lz2_clip.json), [iv_ise_B_isemeshA_lz2_clip.json](Lab3_diode_3D/devsim/iv_ise_B_isemeshA_lz2_clip.json) | ВАХ DEVSIM, 2 мкм |
+| [devsim/iv_ise_A_isemesh_clip.json](Lab3_diode_3D/devsim/iv_ise_A_isemesh_clip.json), [iv_ise_B_isemeshA_clip.json](Lab3_diode_3D/devsim/iv_ise_B_isemeshA_clip.json) | ВАХ DEVSIM |
 | [devsim/field_ise_A_isemesh_clip.npz](Lab3_diode_3D/devsim/field_ise_A_isemesh_clip.npz), [field_ise_B_isemeshA_clip.npz](Lab3_diode_3D/devsim/field_ise_B_isemeshA_clip.npz) | поля DEVSIM при 4 В |
 | [devsim/reference_iv.json](Lab3_diode_3D/devsim/reference_iv.json) | эталонная ВАХ, оцифрованная |
 | [python/sweep.py](Lab3_diode_3D/python/sweep.py), [tools/dd3d.py](tools/dd3d.py) | самописный решатель: развёртка и сам решатель |
