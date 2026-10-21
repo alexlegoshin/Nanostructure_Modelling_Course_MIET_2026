@@ -268,3 +268,67 @@ def xy_ref(series, path, size, frame, xlabel, ylabel, xstep, ystep,
     fig.savefig(path, dpi=100, facecolor="white")
     plt.close(fig)
     return path
+
+
+# палитра inspect в работе 4 (снята с эталонов): кривые нумеруются сверху вниз
+INSPECT = [(0, 0, 0), (255, 0, 0), (0, 0, 255), (0, 255, 0), (176, 48, 96), (238, 130, 238)]
+
+
+def xy_inspect(series, path, size, frame, xlim, ylim, xstep, ystep, title="", xlabel=("", ""),
+               ylabel="", yfmt="{:g}", xfmt="{:g}", fs=12, title_xy=(30, 4), ylabel_x=None,
+               xlabel_y=None, ylabel_fs=None, ytick_fs=None, lw=3):
+    """График в стиле эталонов работы 4 (inspect): рамка в заданных пикселях, линии в
+    lw пикселей без сглаживания, Courier без жирного, засечки наружу, пунктирная сетка,
+    подпись сверху слева («Gate: Vg = …»).
+
+    series — список (x, y, цвет[, стиль]); цвет — RGB 0..255 или имя; стиль — '-' или ':'.
+    """
+    with matplotlib.rc_context({"text.antialiased": False}):   # текст inspect без сглаживания
+        return _xy_inspect(series, path, size, frame, xlim, ylim, xstep, ystep, title, xlabel, ylabel,
+                           yfmt, xfmt, fs, title_xy, ylabel_x, xlabel_y, ylabel_fs, ytick_fs, lw)
+
+
+def _xy_inspect(series, path, size, frame, xlim, ylim, xstep, ystep, title, xlabel, ylabel,
+                yfmt, xfmt, fs, title_xy, ylabel_x, xlabel_y, ylabel_fs, ytick_fs, lw):
+    W, H = size
+    l, r, t, b = frame
+    fig = plt.figure(figsize=((W + 0.1) / 100.0, (H + 0.1) / 100.0), dpi=100)
+    ax = fig.add_axes([l / W, 1 - b / H, (r - l) / W, (b - t) / H])
+    for s in series:
+        x, y, col = s[:3]
+        ls = s[3] if len(s) > 3 else "-"
+        c = tuple(v / 255.0 for v in col) if isinstance(col, tuple) else col
+        ax.plot(x, y, color=c, lw=(lw - 0.9) * PX, ls=(0, (2, 2)) if ls == ":" else "-",
+                antialiased=False, solid_joinstyle="miter", clip_on=True)
+    ax.set_xlim(*xlim); ax.set_ylim(*ylim)
+    from matplotlib.ticker import MultipleLocator
+    ax.xaxis.set_major_locator(MultipleLocator(xstep))
+    ax.yaxis.set_major_locator(MultipleLocator(ystep))
+    ax.xaxis.set_minor_locator(AutoMinorLocator(5))
+    ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: xfmt.format(v) if abs(v) > 1e-12 else "0"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: yfmt.format(v) if abs(v) > 1e-12 else "0"))
+    ax.tick_params(which="major", direction="out", length=6 * PX, width=1 * PX,
+                   top=False, right=False, labelsize=fs, pad=3 * PX)
+    ax.tick_params(which="minor", direction="out", length=4 * PX, width=1 * PX, top=False, right=False)
+    if ytick_fs:
+        ax.tick_params(axis="y", labelsize=ytick_fs)
+    ax.grid(True, which="major", color="k", lw=1 * PX, ls=(0, (2, 3)))
+    for sp in ax.spines.values():
+        sp.set_linewidth(1 * PX); sp.set_color("k")
+    for tl in ax.get_xticklabels() + ax.get_yticklabels():
+        tl.set_fontfamily(COURIER)
+    if title:
+        fig.text(title_xy[0] / W, 1 - title_xy[1] / H, title, ha="left", va="top",
+                 fontfamily=COURIER, fontweight="bold", fontsize=fs)
+    yl_x = ylabel_x if ylabel_x is not None else l - 45
+    fig.text(yl_x / W, 1 - (t + b) / 2 / H, ylabel, rotation=90, ha="center", va="center",
+             fontfamily=HELV, fontweight="bold", fontsize=ylabel_fs or fs)
+    q, u = xlabel
+    yb = (xlabel_y if xlabel_y is not None else b + 45) / H
+    cx = (l + r) / 2 / W
+    fig.text(cx - 0.05, 1 - yb, q, ha="right", va="center", fontfamily=COURIER, fontweight="bold", fontsize=fs)
+    fig.text(cx + 0.03, 1 - yb, "(%s)" % u, ha="left", va="center", fontfamily=COURIER, fontweight="bold", fontsize=fs)
+    fig.savefig(path, dpi=100, facecolor="white")
+    plt.close(fig)
+    return path

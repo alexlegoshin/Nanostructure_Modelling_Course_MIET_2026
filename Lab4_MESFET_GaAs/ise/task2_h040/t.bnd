@@ -1,0 +1,69 @@
+GaAs "S10"
+{
+	rectangle [(0, 0.0) (5, 1.05)]
+}
+
+GaAs "S11"
+{
+	rectangle [(10, 0.0) (15, 1.05)]
+}
+
+GaAs "S8a"
+{
+	rectangle [(5, 0.0) (7, 0.1)]
+}
+
+GaAs "S8b"
+{
+	rectangle [(8, 0.0) (10, 0.1)]
+}
+
+GaAs "S7"
+{
+	polygon [(5, 0.1) (7, 0.1) (7, 0.26) (8, 0.26) (8, 0.1) (10, 0.1) (10, 0.3) (5, 0.3)]
+}
+
+GaAs "S6"
+{
+	rectangle [(5, 0.3) (10, 0.301)]
+}
+
+AlGaAs "S5"
+{
+	rectangle [(5, 0.301) (10, 0.304)]
+}
+
+GaAs "S4"
+{
+	rectangle [(5, 0.304) (10, 0.324)]
+}
+
+GaAs "S3"
+{
+	rectangle [(5, 0.324) (10, 0.33)]
+}
+
+GaAs "S2"
+{
+	rectangle [(5, 0.33) (10, 1.05)]
+}
+
+GaAs "S1"
+{
+	rectangle [(0, 1.05) (15, 2.05)]
+}
+
+Contact "Source"
+{
+	line [(0,0) (5,0)]
+}
+
+Contact "Gate"
+{
+	line [(7,0.26) (8,0.26)]
+}
+
+Contact "Drain"
+{
+	line [(10,0) (15,0)]
+}
