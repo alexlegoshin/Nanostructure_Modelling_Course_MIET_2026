@@ -59,6 +59,7 @@ ISE запущен в эмулированной Windows XP и управляе�
 ├── Lab1_diode_2D/                работа 1: блокнот, ise/ (файлы ISE), reference/, results/
 ├── Lab2_diode_2D_mesh/           работа 2, та же структура
 ├── Lab3_diode_3D/                работа 3
+│   ├── Lab3_diode_*.ipynb        блокноты: ISE, DEVSIM, самописный решатель
 │   ├── make_figures.py           все иллюстрации и сводные листы одной командой
 │   ├── ise/                      файлы ISE: командные, батники, срезы, результаты
 │   ├── python/                   самописный 3D-решатель
@@ -242,6 +243,9 @@ ISE на сетке эталона совпадает с эталоном в п�
 
 | | |
 |---|---|
+| [Lab3_diode_ISE.ipynb](Lab3_diode_3D/Lab3_diode_ISE.ipynb) | блокнот ISE: от геометрии до иллюстраций |
+| [Lab3_diode_DEVSIM.ipynb](Lab3_diode_3D/Lab3_diode_DEVSIM.ipynb) | блокнот DEVSIM |
+| [Lab3_diode_python.ipynb](Lab3_diode_3D/Lab3_diode_python.ipynb) | блокнот самописного решателя |
 | [make_figures.py](Lab3_diode_3D/make_figures.py) | все иллюстрации и сводные листы |
 | [ise/sA.bnd](Lab3_diode_3D/ise/sA.bnd), [sB.bnd](Lab3_diode_3D/ise/sB.bnd), [sA.cmd](Lab3_diode_3D/ise/sA.cmd), [sB.cmd](Lab3_diode_3D/ise/sB.cmd) | геометрия, сетка и легирование |
 | [ise/sA_des.cmd](Lab3_diode_3D/ise/sA_des.cmd), [sB_des.cmd](Lab3_diode_3D/ise/sB_des.cmd) | решатель ISE, как в примере методических указаний (`method=slip`) |
