@@ -19,8 +19,11 @@ Physics {
 Plot {
 	eDensity hDensity eCurrent hCurrent
 	Potential SpaceCharge ElectricField
+	eMobility hMobility eVelocity hVelocity
 	Doping DonorConcentration AcceptorConcentration
 	Current/Vector
+	TotalCurrent/Vector
+	ElectricField/Vector
 }
 
 Math {

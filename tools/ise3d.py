@@ -21,18 +21,20 @@ NB = len(ise.RGB)                      # 31 полоса
 ZSTRETCH = 1.45                        # по Oz вытянуто, иначе прибор нечитаемо плоский
 
 
-def _colors_on_grid(grid, vals, nu=160, nv=96, lo=None, hi=None):
+def _colors_on_grid(grid, vals, nu=160, nv=96, lo=None, hi=None, transform=True):
     """Поле с треугольной сетки на регулярную, уже в виде цветов полос.
-    lo, hi — границы шкалы (в ареасинусе); по умолчанию — min..max самого сечения."""
+    lo, hi — границы шкалы (в ареасинусе); по умолчанию — min..max самого сечения.
+    transform=False — поле уже в нужной шкале (например, lg|J|)."""
     v = grid["vertices"]
     tri = Triangulation(v[:, 0], v[:, 1], dfise.triangles(grid))
-    f = LinearTriInterpolator(tri, ise._t(vals))       # интерполируем преобразованное
+    t = ise._t(vals) if transform else np.asarray(vals, float)
+    f = LinearTriInterpolator(tri, t)                  # интерполируем преобразованное
     u = np.linspace(v[:, 0].min(), v[:, 0].max(), nu)
     w = np.linspace(v[:, 1].min(), v[:, 1].max(), nv)
     U, W = np.meshgrid(u, w)
     T = f(U, W)
-    lo = float(ise._t(vals).min()) if lo is None else lo
-    hi = float(ise._t(vals).max()) if hi is None else hi
+    lo = float(np.nanmin(t)) if lo is None else lo
+    hi = float(np.nanmax(t)) if hi is None else hi
     if hi <= lo:
         hi = lo + 1.0
     k = np.clip(((np.ma.filled(T, lo) - lo) / (hi - lo) * NB).astype(int), 0, NB - 1)
@@ -205,6 +207,10 @@ def _box_segments(kind, LX, LY, LZ, anode):
     else:
         Lt, T, Rt, Rb, Fb, Lb = (LX, 0, LZ), (0, 0, LZ), (0, LY, LZ), (0, LY, 0), (LX, LY, 0), (LX, 0, 0)
         S += [(a, b, "edge") for a, b in ((Lt, T), (T, Rt), (Rt, Rb), (Rb, Fb), (Fb, Lb), (Lb, Lt))]
+        # три ребра ближнего угла: он не на силуэте, и без них перспектива подгоняется
+        # неоднозначно (контур совпадает, а угол и высота — нет)
+        F = (LX, LY, LZ)
+        S += [(F, Fb, "black"), (F, Rt, "black"), (F, Lt, "black")]
     S += [(an[i], an[(i + 1) % 4], "mag") for i in range(4)]
     return S
 
@@ -265,6 +271,10 @@ def structure_ref(path, verts, tris, dop, LX, LY, LZ, anode, cam, size):
         d.polygon([tuple(p) for p in t], fill=_rgb(BLUE_REF if sg < 0 else RED_REF))
     for t in tri2:
         d.line([tuple(p) for p in t] + [tuple(t[0])], fill=(0, 0, 0), width=1)
+    # видимые рёбра коробки — жирнее внутренней сетки, как у эталона (2 пикселя против 1)
+    Lt, T, Rt, Rb, Fb, Lb, F = (LX, 0, LZ), (0, 0, LZ), (0, LY, LZ), (0, LY, 0), (LX, LY, 0), (LX, 0, 0), (LX, LY, LZ)
+    for a, b in ((Lt, T), (T, Rt), (Rt, Rb), (Rb, Fb), (Fb, Lb), (Lb, Lt), (F, Fb), (F, Rt), (F, Lt)):
+        d.line([tuple(p) for p in project(cam, [a, b])], fill=(0, 0, 0), width=2)
     zj = LZ / 2                                           # линия перехода по видимым боковым граням
     for a, b, n in (((LX, 0, zj), (LX, LY, zj), (1, 0, 0)), ((0, 0, zj), (0, LY, zj), (-1, 0, 0)),
                     ((0, 0, zj), (LX, 0, zj), (0, -1, 0)), ((0, LY, zj), (LX, LY, zj), (0, 1, 0))):
@@ -337,10 +347,10 @@ def cut_ref(path, P3, rgba, kind, value, LX, LY, LZ, anode, cam, size):
     return path
 
 
-def plane_from_ise_cut(grid, vals, kind, value, nu=160, nw=96, lo=None, hi=None):
+def plane_from_ise_cut(grid, vals, kind, value, nu=160, nw=96, lo=None, hi=None, transform=True):
     """Сечение ISE (dfisetools -cut) -> точки плоскости в координатах прибора и цвета.
     У сечений поперёк прибора первая координата сечения — это -x, вдоль — y."""
-    U, W, rgba = _colors_on_grid(grid, vals, nu=nu, nv=nw, lo=lo, hi=hi)
+    U, W, rgba = _colors_on_grid(grid, vals, nu=nu, nv=nw, lo=lo, hi=hi, transform=transform)
     if kind == "y":
         P3 = np.stack([-U, np.full_like(U, value), W], -1)
     else:

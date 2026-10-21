@@ -117,6 +117,9 @@ def read_dataset(path, grid=None):
 
         kind = re.search(rb"type\s*=\s*(\w+)", body)
         kind = kind.group(1).decode() if kind else "scalar"
+        dim = re.search(rb"dimension\s*=\s*(\d+)", body)   # у dessis вектор — только dimension = 3
+        if dim and int(dim.group(1)) > 1:
+            kind = "vector"
         valid = re.findall(rb'"([^"]+)"', re.search(rb"validity\s*=\s*\[([^\]]*)\]", body).group(1))
         vb, _ = _block(body, body.index(b"Values"))
         vals = np.array([float(x) for x in vb.split()])
@@ -203,3 +206,33 @@ def read_grid3d(path):
         if len(ring) == 3:
             tri.append(ring)
     return {"vertices": verts, "surface": np.array(tri, dtype=int)}
+
+
+def read_tets3d(path):
+    """Тетраэдры 3D-сетки как четвёрки вершин (для интерполяции поля на сечение).
+
+    Элемент типа 5 задан четырьмя гранями (отрицательный индекс — грань наоборот,
+    -f-1), грань — рёбрами; вершины тетраэдра — объединение вершин его граней.
+    """
+    txt = open(path, "rb").read()
+    eb, _ = _block(txt, txt.index(b"Edges ("))
+    edges = np.array([int(x) for x in eb.split()]).reshape(-1, 2)
+    fb, _ = _block(txt, txt.index(b"Faces ("))
+    tok = [int(x) for x in fb.split()]
+    fverts, i = [], 0
+    while i < len(tok):
+        n = tok[i]
+        fverts.append({int(v) for e in tok[i + 1:i + 1 + n]
+                       for v in (edges[e] if e >= 0 else edges[-e - 1])})
+        i += 1 + n
+    lb, _ = _block(txt, txt.index(b"Elements ("))
+    tok = [int(x) for x in lb.split()]
+    size = {1: 2, 2: 3, 3: 4, 5: 4, 6: 5, 7: 5, 8: 6}     # число граней/вершин по типу DF-ISE
+    tets, i = [], 0
+    while i < len(tok):
+        kind = tok[i]; n = size[kind]
+        if kind == 5:
+            vs = set().union(*(fverts[f if f >= 0 else -f - 1] for f in tok[i + 1:i + 1 + n]))
+            tets.append(sorted(vs))
+        i += 1 + n
+    return np.array(tets)

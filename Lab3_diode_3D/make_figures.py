@@ -104,25 +104,40 @@ def cut(out, name, diode, kind, value, P3, rgba):
     ise3d.cut_ref(out + name + ".png", P3, rgba, kind, value, LX, LY, LZ, ANODE[diode], cam, size)
 
 
+def ise_field(t):
+    """Трёхмерное поле ISE (sX_des.dat) на тетраэдрах своей сетки — для сечений и общей шкалы."""
+    g = dfise.read_grid3d(ISE + "s%s_msh.grd" % t)
+    d = dfise.read_dataset(ISE + "s%s_des.dat" % t)
+    v = g["vertices"] * 1e-4                           # tet_interp ждёт сантиметры, как у DEVSIM
+    return {"x": v[:, 0], "y": v[:, 1], "z": v[:, 2], "tets": dfise.read_tets3d(ISE + "s%s_msh.grd" % t),
+            "q": d["SpaceCharge"], "J": np.linalg.norm(d["TotalCurrentDensity-Vector"], axis=1)}
+
+
 def figures_ise():
-    """ISE: диод A полностью; диод B под смещением не сошёлся, поэтому для него только структура."""
+    """ISE на сетке, подобранной под эталон (ise/sA.cmd): оба диода до 4 В."""
     out = OUT["ise"]; os.makedirs(out, exist_ok=True)
     for t in "AB":
         g = dfise.read_grid3d(ISE + "s%s_msh.grd" % t)
         dop = dfise.read_dataset(ISE + "s%s_msh.dat" % t)["DopingConcentration"]
         structure(out, "z1_структура_" + t, t, g["vertices"], g["surface"], dop)
-    VA, IA = iv_ise(ISE + "sA_des.plt")
-    ise.xy_ref([(VA, IA, "r")], out + "z2_вах.png", **IV)
-    a = viz.read_plt(ISE + "AyTop.plt"); ja = j_abs(a)
-    jt([(np.asarray(a["Distance"]), ja, "r")], out + "z2_ток_вдоль_границы.png")
-    # трёхмерное поле ISE из виртуалки не выгружалось — шкала по самому сечению
-    # (для поперечных сечений она с общей практически совпадает)
-    g = dfise.read_grid(ISE + "Ay.grd"); d = dfise.read_dataset(ISE + "Ay.dat", g)
-    cut(out, "z3_A_сечение_y1.5", "A", "y", 1.5, *ise3d.plane_from_ise_cut(g, d["SpaceCharge"], "y", 1.5))
-    for f in ("z3_B_сечение_y1.5", "z3_B_сечение_x0.75", "z3_B_сечение_x0.25"):
-        if os.path.exists(out + f + ".png"):     # сечения диода B при 0 В — не результат
-            os.remove(out + f + ".png")
-    print("ISE: A до %.2f В (%.5f А)" % (VA.max(), IA[-1]))
+    VA, IA = iv_ise(ISE + "sA_des.plt"); VB, IB = iv_ise(ISE + "sB_des.plt")
+    ise.xy_ref([(VB, IB, "k"), (VA, IA, "r")], out + "z2_вах.png", **IV)
+    a = viz.read_plt(ISE + "AyTop.plt"); b = viz.read_plt(ISE + "ByTop.plt")
+    # линия topline идёт в координатах среза (u = -x) от u = -1 к 0, то есть от x = 1 к x = 0
+    jt([(LX - np.asarray(b["Distance"]), j_abs(b), "k"), (LX - np.asarray(a["Distance"]), j_abs(a), "r")],
+       out + "z2_ток_вдоль_границы.png")
+    # Сечения — из трёхмерного поля по тетраэдрам сетки, шкала общая на весь прибор.
+    # Срезы dfisetools (Ay, By, Bx*) для этого не годятся: вектор тока в них только
+    # в плоскости среза, нормальная составляющая теряется.
+    z = {t: ise_field(t) for t in "AB"}
+    for nm, t, kind, value in CUTS:
+        if QUANTITY[kind] == "charge":
+            F = ise._t(z[t]["q"])
+        else:
+            F = np.log10(z[t]["J"])
+        pl = plane(kind, value, *pp.devsim_plane(z[t], F, kind, value), F.min(), F.max(), transform=False)
+        cut(out, nm, t, kind, value, *pl)
+    print("ISE: A %.5f А, B %.5f А при 4 В" % (IA[-1], IB[-1]))
 
 
 def figures_python():
@@ -190,7 +205,7 @@ def comparison_grid():
 
 
 def sheets():
-    for k, sub in (("ise", "ISE (диод B под смещением не сошёлся)"), ("python", "самописный решатель"),
+    for k, sub in (("ise", "ISE"), ("python", "самописный решатель"),
                    ("devsim_ise", "DEVSIM, физика и сетка ISE")):
         out = OUT[k]
         items = [(t, REF + f + ".png", out + f + ".png") for t, f in NAMES if os.path.exists(out + f + ".png")]

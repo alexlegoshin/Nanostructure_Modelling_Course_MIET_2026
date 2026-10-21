@@ -4,13 +4,13 @@ Definitions
 {
     Refinement "Mesh1"
     {
-      MaxElementSize = (0.25, 0.25, 0.1)
+      MaxElementSize = (0.25, 0.25, 0.2)
       MinElementSize = (0.05, 0.05, 0.02)
       RefineFunction = MaxTransDiff(Variable = "DopingConcentration", Value = 1)
     }
     Refinement "Mesh2"
     {
-      MaxElementSize = (0.1, 0.1, 0.04)
+      MaxElementSize = (0.2, 0.2, 0.1)
       MinElementSize = (0.02, 0.02, 0.01)
     }
     Constant "BW"  { Species = "BoronActiveConcentration"   Value = 1.4e+17 }

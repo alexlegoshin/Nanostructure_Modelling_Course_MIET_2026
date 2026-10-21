@@ -4,7 +4,7 @@
     python plot_ise.py
 
 Две панели, обе — толщина 0.8 мкм (вариант 2), сетка ISE:
-  слева  — проверка решателя против нашего прогона ISE (диод A);
+  слева  — проверка решателя против нашего прогона ISE (оба диода);
   справа — против эталона варианта 2 (reference/z2_вах.png, цифры — reference_iv.json).
 Пишет ../results/devsim_ise/вах.png и печатает таблицы для README.
 """
@@ -36,14 +36,17 @@ def at(c, v):
 
 def main():
     A8, B8 = load("iv_ise_A_isemesh_clip.json"), load("iv_ise_B_isemeshA_clip.json")
-    d = viz.read_plt(os.path.join(HERE, "..", "ise", "sA_des.plt"))
-    ise = np.asarray(d["Anode OuterVoltage"]), np.abs(np.asarray(d["Anode TotalCurrent"]))
+    def ise_iv(t):
+        d = viz.read_plt(os.path.join(HERE, "..", "ise", "s%s_des.plt" % t))
+        return np.asarray(d["Anode OuterVoltage"]), np.abs(np.asarray(d["Anode TotalCurrent"]))
+    ise, iseB = ise_iv("A"), ise_iv("B")
     ref = json.load(open(os.path.join(HERE, "reference_iv.json")))
     rA, rB = (np.array(ref[k]) for k in ("A", "B"))
 
     os.makedirs(OUT, exist_ok=True)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11, 4.6), dpi=150, sharey=True)
     ax1.plot(ise[0], ise[1] * 1e3, "o", color=RED, ms=4, mfc="none", label="ISE, A")
+    ax1.plot(iseB[0], iseB[1] * 1e3, "s", color=BLACK, ms=3.5, mfc="none", label="ISE, B")
     ax2.plot(rA[0], rA[1] * 1e3, color=RED, lw=6, alpha=0.25, label="эталон варианта 2, A")
     ax2.plot(rB[0], rB[1] * 1e3, color=BLACK, lw=6, alpha=0.25, label="эталон варианта 2, B")
     for ax in (ax1, ax2):
@@ -63,12 +66,12 @@ def main():
     fig.savefig(png); print("картинка:", os.path.abspath(png))
 
     vs = (1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 3.95)
-    print("\n| U, В | A, мА | ISE A | эталон A | B, мА | эталон B | B ниже A | эталон: B ниже A |")
-    print("|---|---|---|---|---|---|---|---|")
+    print("\n| U, В | A, мА | ISE A | эталон A | B, мА | ISE B | эталон B | B ниже A | эталон: B ниже A |")
+    print("|---|---|---|---|---|---|---|---|---|")
     for v in vs:
-        a, b, i, ra, rb = at(A8, v), at(B8, v), at(ise, v), at(rA, v), at(rB, v)
-        print("| %.2f | %.3f | %.3f | %.3f | %.3f | %.3f | %.1f %% | %.1f %% |"
-              % (v, a * 1e3, i * 1e3, ra * 1e3, b * 1e3, rb * 1e3, 100 * (1 - b / a), 100 * (1 - rb / ra)))
+        a, b, i, ib, ra, rb = at(A8, v), at(B8, v), at(ise, v), at(iseB, v), at(rA, v), at(rB, v)
+        print("| %.2f | %.3f | %.3f | %.3f | %.3f | %.3f | %.3f | %.1f %% | %.1f %% |"
+              % (v, a * 1e3, i * 1e3, ra * 1e3, b * 1e3, ib * 1e3, rb * 1e3, 100 * (1 - b / a), 100 * (1 - rb / ra)))
 
 
 if __name__ == "__main__":
