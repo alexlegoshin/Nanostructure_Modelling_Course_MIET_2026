@@ -14,7 +14,6 @@
 """
 import re
 import numpy as np
-import plotly.graph_objects as go
 from matplotlib.tri import Triangulation, LinearTriInterpolator
 
 # Радуга SVisual: тёмно-синий → синий → голубой → зелёный → жёлтый → оранжевый → красный
@@ -82,6 +81,7 @@ def field_map(grid, values, title="", units="", levels=16, res=420,
         hi = lo + 1.0
     step = (hi - lo) / levels
 
+    import plotly.graph_objects as go       # только для рисования: read_plt без plotly
     fig = go.Figure()
     fig.add_trace(go.Contour(
         x=gx, y=gy, z=GZ, colorscale=RAINBOW,
@@ -140,6 +140,7 @@ def xy_plot(curves, xlabel="", ylabel="", title="", logy=False):
 
     curves — список (подпись, x, y).
     """
+    import plotly.graph_objects as go
     fig = go.Figure()
     for name, cx, cy in curves:
         fig.add_trace(go.Scatter(x=cx, y=cy, mode="lines", name=name,

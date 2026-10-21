@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Все картинки лабы 3 из уже посчитанных данных — ISE не нужен.
 
-    python3 Lab3_diode_3D/make_figures.py            # ISE, свой решатель, DEVSIM на scale 2
-    python3 Lab3_diode_3D/make_figures.py 1          # DEVSIM с мелкой сетки (scale 1)
+    python3 Lab3_diode_3D/make_figures.py            # ISE, свой решатель, DEVSIM с физикой ISE
+    python3 Lab3_diode_3D/make_figures.py 1 edge     # плюс DEVSIM на сетке Gmsh (run.py, scale 1)
 
 Берёт выгруженные из ISE файлы (ise/) и результаты своего решателя (python/),
 рисует восемь позиций задания в двух вариантах и собирает сводные листы
@@ -99,26 +99,29 @@ def figures_python():
     print("питон: A %.5f А, B %.5f А при 4 В" % (A["I"][-1], B["I"][-1]))
 
 
-def figures_devsim(scale):
-    """Восемь позиций по DEVSIM (devsim/run.py): поля и ВАХ с сетки заданного масштаба."""
+def figures_devsim(name, fA, fB, ivA, ivB, note):
+    """Восемь позиций по DEVSIM: поля при 4 В (field_*.npz) и ВАХ (iv_*.json) обоих диодов.
+
+    Файлы пишут devsim/run_ise.py (физика ISE на сетке ISE, с поправкой ячеек — основной)
+    и devsim/run.py (сетка Gmsh). Лист — results/<name>/.
+    """
     import json
-    tag = lambda t: "%s_%s_element" % (t, scale)
-    need = [DS + "field_%s.npz" % tag(t) for t in "AB"] + [DS + "iv_%s.json" % tag(t) for t in "AB"]
-    if not all(os.path.exists(f) for f in need):
-        print("DEVSIM scale %s: нет файлов, пропускаю" % scale)
+    files = [DS + f for f in (fA, fB, ivA, ivB)]
+    if not all(os.path.exists(f) for f in files):
+        print("DEVSIM %s: нет файлов, пропускаю" % name)
         return None
-    out = os.path.join(HERE, "results", "devsim_%s" % scale) + "/"
+    out = os.path.join(HERE, "results", name) + "/"
     os.makedirs(out, exist_ok=True)
-    z = {t: np.load(DS + "field_%s.npz" % tag(t)) for t in "AB"}
+    z = {"A": np.load(files[0]), "B": np.load(files[1])}
+    iv = {"A": np.array(json.load(open(files[2]))), "B": np.array(json.load(open(files[3])))}
     for t in "AB":
         pp.devsim_structure(out + "z1_структура_%s.png" % t, z[t], LX, LY, LZ, ANODE[t])
-    iv = {t: np.array(json.load(open(DS + "iv_%s.json" % tag(t)))) for t in "AB"}
     ise.xy([("I (A)", iv["B"][:, 0], iv["B"][:, 1], "k"), ("I (A)", iv["A"][:, 0], iv["A"][:, 1], "r")],
            out + "z2_вах.png", size=(497, 462), legend=False)
-    xa, ja, fa = pp.devsim_j_top(DS + "field_%s.npz" % tag("A"), ANODE["A"])
-    xb, jb, fb = pp.devsim_j_top(DS + "field_%s.npz" % tag("B"), ANODE["B"])
-    print("DEVSIM: поток через анод %.5f / %.5f А против тока контакта %.5f / %.5f А"
-          % (fa, fb, iv["A"][-1, 1], iv["B"][-1, 1]))
+    xa, ja, fa = pp.devsim_j_top(files[0], ANODE["A"])
+    xb, jb, fb = pp.devsim_j_top(files[1], ANODE["B"])
+    print("DEVSIM %s: поток через анод %.5f / %.5f А, ток контакта %.5f / %.5f А"
+          % (name, fa, fb, iv["A"][-1, 1], iv["B"][-1, 1]))
     ise.xy([("J (A/cm^2)", xb, jb, "k"), ("J (A/cm^2)", xa, ja, "r")],
            out + "z2_ток_вдоль_границы.png", size=(484, 510), legend=False)
     for nm, t, kind, v in (("z3_A_сечение_y1.5", "A", "y", 1.5), ("z3_B_сечение_y1.5", "B", "y", 1.5),
@@ -126,10 +129,8 @@ def figures_devsim(scale):
         pp.cut_in_box(out + nm + ".png", None, kind, v, anode=ANODE[t],
                       uwF=pp.devsim_cut(z[t], kind, v))
     n = len(z["A"]["x"]), len(z["B"]["x"])
-    print("DEVSIM scale %s: A %.5f А, B %.5f А при 4 В, узлов %d / %d"
-          % (scale, iv["A"][-1, 1], iv["B"][-1, 1], n[0], n[1]))
     sheet.pairs([(t, REF + f + ".png", out + f + ".png", "") for t, f in NAMES], out + "СВОДНЫЙ_ЛИСТ.png",
-                title=TITLE + ";   DEVSIM, %d / %d узлов" % n)
+                title=TITLE + "\nDEVSIM: " + note % n)
     return out
 
 
@@ -145,5 +146,14 @@ if __name__ == "__main__":
                  for t, f in NAMES], OUT_ISE + "СВОДНЫЙ_ЛИСТ.png", title=TITLE)
     sheet.pairs([(t, REF + f + ".png", OUT_PY + f + ".png", "") for t, f in NAMES],
                 OUT_PY + "СВОДНЫЙ_ЛИСТ.png", title=TITLE)
-    figures_devsim(sys.argv[1] if len(sys.argv) > 1 else "2")
+    # основной DEVSIM: физика ISE на сетке ISE (B — сетка A с правой половиной анода)
+    figures_devsim("devsim_ise", "field_ise_A_isemesh_clip.npz", "field_ise_B_isemeshA_clip.npz",
+                   "iv_ise_A_isemesh_clip.json", "iv_ise_B_isemeshA_clip.json",
+                   "физика и сетка ISE, %d / %d узлов")
+    # сетка Gmsh (run.py): python make_figures.py <scale> [<подвижность>]
+    if len(sys.argv) > 1:
+        sc, mob = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "edge")
+        figures_devsim("devsim_gmsh_%s" % sc, "field_A_%s_%s.npz" % (sc, mob), "field_B_%s_%s.npz" % (sc, mob),
+                       "iv_A_%s_%s.json" % (sc, mob), "iv_B_%s_%s.json" % (sc, mob),
+                       "сетка Gmsh, %d / %d узлов (ячейки DEVSIM, токи завышены)")
     print("сводные листы собраны")

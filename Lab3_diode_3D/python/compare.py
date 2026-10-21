@@ -33,11 +33,12 @@ for tag, col, style in (("A", "tab:red", "--"), ("B", "tab:blue", "--")):
     except Exception: pass
 
 for tag, col in (("A", "tab:red"), ("B", "tab:blue")):
-    p = os.path.join(HERE, "..", "devsim", "iv_%s_2_element.json" % tag)
+    p = os.path.join(HERE, "..", "devsim", {"A": "iv_ise_A_isemesh_clip.json",
+                                             "B": "iv_ise_B_isemeshA_clip.json"}[tag])
     if not os.path.exists(p): continue
     import json
     VI = np.array(json.load(open(p)))
-    for a in ax: a.plot(VI[:, 0], VI[:, 1], ":", color=col, lw=2, label="DEVSIM, диод " + tag)
+    for a in ax: a.plot(VI[:, 0], VI[:, 1], ":", color=col, lw=2, label="DEVSIM (физика ISE), диод " + tag)
 
 ax[0].set_xlabel("напряжение на аноде, В"); ax[0].set_ylabel("ток, А")
 ax[0].set_title("линейная шкала"); ax[0].grid(alpha=.3); ax[0].legend(fontsize=8)

@@ -17,7 +17,7 @@ def _font(size):
 def pairs(items, path, title="", cell=(430, 330), pad=14):
     """items — список (подпись, путь к эталону, путь к нашему)."""
     CW, CH = cell
-    head = 70 if title else 10
+    head = 18 + 26 * len(title.split("\n")) if title else 10      # под любое число строк
     cap, sub = 22, 18
     rowh = CH + cap + sub + pad
     W = CW * 2 + pad * 3
