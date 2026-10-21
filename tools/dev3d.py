@@ -253,7 +253,23 @@ def save_fields(path, dev=None, reg=None, mode=None):
     np.add.at(node_current, ia.astype(np.int64), flux)
     np.add.at(node_current, ib.astype(np.int64), -flux)
     extra = {}
-    if mode != "element":
+    if mode == "element":
+        # плотность тока по рёбрам: элементные потоки ребра, сложенные с учётом направления,
+        # делённые на площадь грани (без поправки CR) — как в рёберном режиме ниже
+        ee = lambda n: np.array(ds.get_edge_model_values(device=dev, region=reg, name=n))
+        a, b = ee("node_index@n0").astype(np.int64), ee("node_index@n1").astype(np.int64)
+        nn = int(max(a.max(), b.max())) + 1
+        key = {k: i for i, k in enumerate(np.minimum(a, b) * nn + np.maximum(a, b))}
+        ia64, ib64 = ia.astype(np.int64), ib.astype(np.int64)
+        eidx = np.array([key[k] for k in np.minimum(ia64, ib64) * nn + np.maximum(ia64, ib64)])
+        sign = np.where(ia64 == a[eidx], 1.0, -1.0)
+        tot = np.zeros(len(a)); np.add.at(tot, eidx, flux * sign)
+        names = ds.get_edge_model_list(device=dev, region=reg)
+        cr = ee("CR") if "CR" in names else np.ones(len(a))
+        area = ee("EdgeCouple") * cr
+        extra = dict(edge_a=a.astype(np.int32), edge_b=b.astype(np.int32),
+                     edge_j=np.where(area != 0, tot / np.where(area != 0, area, 1.0), np.nan))
+    else:
         # плотность тока на каждом ребре (вдоль n0 -> n1), без поправочного множителя CR:
         # из неё собирается вектор J в узлах (py3d_plots.devsim_j_vector)
         names = ds.get_edge_model_list(device=dev, region=reg)

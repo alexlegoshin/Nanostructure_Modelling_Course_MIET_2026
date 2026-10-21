@@ -25,3 +25,4 @@ license.dat
 
 # логи прогонов DEVSIM на ПК (FUJION): рабочие, в репозиторий — только итоговые json
 Lab3_diode_3D/devsim/logs_pc/
+Lab3_diode_3D/python/*.err

@@ -315,6 +315,46 @@ def j_abs_tensor(z):
     return np.sqrt(sum(c ** 2 for c in comps))
 
 
+def j_abs_edges(z):
+    """Самописный решатель с физикой ISE (dd3d_ise): |J| в узлах из плотностей тока на рёбрах,
+    сохранённых самим решателем (edge_j, edge_axis), — компонента по оси = среднее по рёбрам узла."""
+    shape = (len(z["x"]), len(z["y"]), len(z["z"]))
+    N = int(np.prod(shape))
+    a, b, je, ax = z["edge_a"], z["edge_b"], z["edge_j"], z["edge_axis"]
+    comps = []
+    for k in range(3):
+        s = ax == k
+        node = np.zeros(N); cnt = np.zeros(N)
+        np.add.at(node, a[s], je[s]); np.add.at(cnt, a[s], 1)
+        np.add.at(node, b[s], je[s]); np.add.at(cnt, b[s], 1)
+        comps.append(node / np.maximum(cnt, 1))
+    return np.sqrt(sum(c ** 2 for c in comps)).reshape(shape)
+
+
+def j_top_abs_edges(path_npz, y=1.5):
+    """|J| на верхней грани вдоль y = 1.5 (как у эталона) — по j_abs_edges."""
+    z = np.load(path_npz)
+    J = j_abs_edges(z)
+    j = int(np.argmin(np.abs(z["y"] - y * 1e-4)))
+    return z["x"] * 1e4, J[:, j, -1]
+
+
+def tensor_surface(z):
+    """Поверхность тензорной сетки для картинки структуры: вершины (мкм), прямоугольники граней
+    («кирпич» — ячейки самописного решателя прямоугольные, диагоналей у него нет), легирование.
+    ise3d.structure_ref рисует многоугольники любой длины."""
+    x, y, zz = z["x"] * 1e4, z["y"] * 1e4, z["z"] * 1e4
+    nx, ny, nz = len(x), len(y), len(zz)
+    I = np.arange(nx * ny * nz).reshape(nx, ny, nz)
+    X, Y, Z = np.meshgrid(x, y, zz, indexing="ij")
+    verts = np.stack([X.ravel(), Y.ravel(), Z.ravel()], 1)
+    tris = []
+    for F in (I[0], I[-1], I[:, 0], I[:, -1], I[:, :, 0], I[:, :, -1]):
+        a, b, c, d = F[:-1, :-1].ravel(), F[1:, :-1].ravel(), F[:-1, 1:].ravel(), F[1:, 1:].ravel()
+        tris.append(np.stack([a, b, d, c], 1))
+    return verts, np.concatenate(tris), np.asarray(z["C"]).ravel()
+
+
 def cut_plane_field(z, F3, kind, value, fine=5):
     """Срез произвольного поля F3[x, y, z] тензорной сетки (как cut_plane, но не только заряд)."""
     if kind == "y":

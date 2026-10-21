@@ -27,8 +27,9 @@ def main():
     ap.add_argument("--ext-below", type=float, default=None, help="float128 только ниже этого V")
     ap.add_argument("--ni", type=float, default=None, help="собственная концентрация, см^-3")
     ap.add_argument("--no-hfs", action="store_true", help="без насыщения скорости")
-    ap.add_argument("--drive", default=None, choices=["qf", "e"],
-                    help="движущая сила насыщения: qf — градиент квазиуровня Ферми, e — поле вдоль ребра")
+    ap.add_argument("--drive", default=None, choices=["qf", "e", "elem"],
+                    help="движущая сила насыщения: elem — |E| на тетраэдре (как у ISE), "
+                         "e — поле вдоль ребра, qf — градиент квазиуровня Ферми")
     ap.add_argument("--direct", default="umfpack", choices=["umfpack", "pardiso", "cudss"])
     ap.add_argument("--mesh", default="A", choices=["A", "own"],
                     help="для B: A — сетка диода A с анодом x>=0.5 (как у преподавателя: командные "
@@ -45,7 +46,13 @@ def main():
     ap.add_argument("--gmsh", type=float, default=None, metavar="SCALE",
                     help="своя сетка Gmsh (tools/mesh3d.py) вместо сетки ISE; 1.0 — ~104 тыс. узлов")
     ap.add_argument("--tag", default="", help="добавка к имени файла результата")
+    ap.add_argument("--isedir", default=None,
+                    help="другой каталог с s<диод>_msh.grd/.dat и s<диод>_des.plt (например, прежняя "
+                         "сетка ISE на 5751 узел из истории git: git show a30e494:Lab3_diode_3D/ise/...)")
     a = ap.parse_args()
+    global ISE
+    if a.isedir:
+        ISE = a.isedir
 
     import devsim as ds
     import dev3d, dev_ise, ise_grid, viz
@@ -113,8 +120,9 @@ def main():
     where += "" if a.box == "devsim" else "_" + a.box
     out = os.path.join(HERE, "iv_ise_%s_%s%s.json" % (a.diode, where, a.tag))
     json.dump(iv, open(out, "w"))
+    elem = dev_ise.HFS_DRIVE == "elem" and not a.no_hfs
     dev3d.save_fields(out.replace("iv_ise_", "field_ise_").replace(".json", ".npz"),
-                      dev_ise.DEV, dev_ise.REG, "edge")
+                      dev_ise.DEV, dev_ise.REG, "element" if elem else "edge")
     print("готово за %.0f с, пиковая память %.0f МБ, ВАХ в %s" % (time.time() - t0, peak_mb(), out), flush=True)
 
     compare(a.diode, iv)
@@ -140,6 +148,12 @@ def compare(diode, iv):
         i, i1 = at(V, I, v), at(Vi, Ii, v)
         i2 = np.interp(v, Vr, Ir) if v >= 0.9 else np.nan     # с картинки читается только выше ~0.9 В
         print("  %.2f  %10.4e  %10.4e  %7.4f  %10.4e  %7.4f" % (v, i, i1, i / i1, i2, i / i2))
+    # в собственных точках ISE (без интерполяции на его стороне): на изломе обе ВАХ
+    # идут с шагом 0.1–0.2 В, и логарифмическая интерполяция там врёт на десятки процентов
+    sel = (Vi > 0.25) & (Vi <= V.max() + 1e-9)
+    if sel.any():
+        r = np.array([at(V, I, v) for v in Vi[sel]]) / Ii[sel]
+        print("\n  в точках ISE: " + "  ".join("%.2f:%.3f" % (v, x) for v, x in zip(Vi[sel], r)))
 
 
 if __name__ == "__main__":

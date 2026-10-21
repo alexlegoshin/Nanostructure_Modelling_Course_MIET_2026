@@ -8,7 +8,8 @@
 
 Что это значит в dessis по умолчанию и как сделано здесь:
   DopingDep    — модель Масетти по полному легированию N = N_D + N_A, параметры dessis для Si;
-  HighFieldsat — модель Канали, движущая сила — градиент квазиуровня Ферми (GradQuasiFermi):
+  HighFieldsat — модель Канали; движущая сила у ISE 7 — модуль поля на элементе (проверено по
+                 его же подвижностям в узлах, experiments/ise_physics/), не градиент квазиуровня:
                  mu = mu_low / (1 + (mu_low·F/vsat)^beta)^(1/beta),
                  vsat = 1.07e7 / 8.37e6 см/с, beta = 1.109 / 1.213 (электроны / дырки, 300 К);
   OldSlotboom  — сужение зоны dEg = 9 мэВ·(ln(N/1e17) + sqrt(ln²(N/1e17) + 0.5)),
@@ -37,9 +38,12 @@ EPS = 11.7 * 8.8541878128e-14
 NI = 1.4385e10                    # калибровка по ВАХ ISE на его же сетке: при малых смещениях ток ~ n_i²,
                                   # отношение к ISE постоянно от 0.1 до 0.5 В; при n_i = 1.359e10 и
                                   # исправленных ячейках (BOX="clip") оно 0.8925 -> 1.359e10/sqrt(0.8925)
-HFS_DRIVE = "e"                   # движущая сила насыщения: "e" — поле вдоль ребра, "qf" — градиент квазиуровня.
-                                  # У ISE 7 — поле: с "qf" излом ВАХ вдвое выше ISE (2.58 против 1.34 мА при
-                                  # 1.05 В) и наклон при малых токах n = 1.03; с "e" — n = 1.00 и +9 % (это n_i)
+HFS_DRIVE = "elem"                # движущая сила насыщения: "elem" — |E| на тетраэдре (как у ISE: его
+                                  # подвижности в sA_des.dat — Канали от полного |E|), "e" — проекция поля
+                                  # на ребро (на сетке эталона ток на 3–4 % выше ISE), "qf" — градиент
+                                  # квазиуровня (излом ВАХ вдвое выше ISE, наклон при малых токах n = 1.03).
+                                  # С "elem" на сетке эталона: 0.966–0.990 (A) и 0.966–0.996 (B) от ISE
+                                  # в его собственных точках на 0.4–4 В
 LOW_RELERR = 1e-5                 # допуск ниже EXT_BELOW, если float128 выключен (мелкие сетки, --fast)
 EXT_BELOW = 0.7                  # float128 в сборке нужен, пока ток мал; выше — обычный double
 F_SMOOTH = 1.0                    # В/см: |F| = sqrt(F² + F_SMOOTH²), гладко в нуле
@@ -249,19 +253,65 @@ def drift_diffusion(field_dependent=True):
                     ("PCharge", "ElectronCharge*Holes", "Holes")):
         CreateNodeModel(DEV, REG, n, e)
         CreateNodeModelDerivative(DEV, REG, n, e, v)
+    elem = field_dependent and HFS_DRIVE == "elem"
+    if elem:
+        element_currents(Jn, Jp)
+    kw = (lambda k: {"element_model": k + "Elem"}) if elem else (lambda k: {"edge_model": k})
     ds.equation(device=DEV, region=REG, name="ElectronContinuityEquation", variable_name="Electrons",
-                time_node_model="NCharge", edge_model="ElectronCurrent", variable_update="positive")
+                time_node_model="NCharge", variable_update="positive", **kw("ElectronCurrent"))
     ds.equation(device=DEV, region=REG, name="HoleContinuityEquation", variable_name="Holes",
-                time_node_model="PCharge", edge_model="HoleCurrent", variable_update="positive")
+                time_node_model="PCharge", variable_update="positive", **kw("HoleCurrent"))
+    ckw = (lambda k: {"element_current_model": k + "Elem"}) if elem else (lambda k: {"edge_current_model": k})
     for c in CONTACTS:
         CreateContactNodeModel(DEV, c, c + "_n", "Electrons - ifelse(NetDoping > 0, celec, n_ie^2/chole)")
         CreateContactNodeModel(DEV, c, c + "_n:Electrons", "1")
         CreateContactNodeModel(DEV, c, c + "_p", "Holes - ifelse(NetDoping < 0, chole, n_ie^2/celec)")
         CreateContactNodeModel(DEV, c, c + "_p:Holes", "1")
         ds.contact_equation(device=DEV, contact=c, name="ElectronContinuityEquation",
-                            node_model=c + "_n", edge_current_model="ElectronCurrent")
+                            node_model=c + "_n", **ckw("ElectronCurrent"))
         ds.contact_equation(device=DEV, contact=c, name="HoleContinuityEquation",
-                            node_model=c + "_p", edge_current_model="HoleCurrent")
+                            node_model=c + "_p", **ckw("HoleCurrent"))
+
+
+EN = ("@en0", "@en1", "@en2", "@en3")       # узлы тетраэдра в элементных моделях DEVSIM
+
+
+def _elem(name, expr, variables=()):
+    ds.element_model(device=DEV, region=REG, name=name, equation=expr)
+    for v in variables:
+        for e in EN:
+            ds.element_model(device=DEV, region=REG, name="%s:%s%s" % (name, v, e),
+                             equation="diff(%s, %s%s)" % (expr, v, e))
+
+
+def element_currents(Jn_edge, Jp_edge):
+    """Насыщение по модулю поля на тетраэдре (HFS_DRIVE = "elem"), как у ISE.
+
+    Подвижности, которые ISE пишет в sA_des.dat, — это Канали от полного |E|: медиана
+    отношения к формуле ровно 1.00 (experiments/ise_physics/drive_probe.py). На ребре видна
+    только проекция поля — на косых рёбрах она меньше |E|, подвижность выше, ток на
+    сетке эталона на 3–4 % выше ISE. Здесь вектор поля собирается на каждом тетраэдре
+    из его рёбер, подвижность — на элементе, поток Шарфеттера-Гуммеля — тот же, но
+    элементной моделью (как dev3d.element_currents, по образцу mos_physics.py DEVSIM).
+    Поправка ячеек CR — рёберная: все вклады ребра масштабируются одинаково.
+    """
+    ds.element_from_edge_model(edge_model="ElectricField", device=DEV, region=REG)
+    ds.element_from_edge_model(edge_model="ElectricField", device=DEV, region=REG, derivative="Potential")
+    ds.element_model(device=DEV, region=REG, name="Emag",
+                     equation="pow(ElectricField_x^2 + ElectricField_y^2 + ElectricField_z^2 + %g, 0.5)"
+                     % F_SMOOTH ** 2)
+    for e in EN:
+        ds.element_model(device=DEV, region=REG, name="Emag:Potential" + e, equation=(
+            "(ElectricField_x*ElectricField_x:Potential{0} + ElectricField_y*ElectricField_y:Potential{0}"
+            " + ElectricField_z*ElectricField_z:Potential{0})/Emag").format(e))
+    for k in ("n", "p"):
+        vsat, beta = CANALI[k]
+        _elem("mu_%s_elem" % k, "mul_{k}*pow(1 + pow(mul_{k}*Emag/{v:g}, {b:g}), {ib:.12g})".format(
+            k=k, v=vsat, b=beta, ib=-1.0 / beta), ("Potential",))
+    sol = ("Potential", "Electrons", "Holes")
+    for name, J, k in (("ElectronCurrentElem", Jn_edge, "n"), ("HoleCurrentElem", Jp_edge, "p")):
+        J = J.replace("mu_%s*" % k, "mu_%s_elem*" % k).replace("@n0", "@en0").replace("@n1", "@en1")
+        _elem(name, J, sol)
 
 
 # ------------------------------------------------------------------- счёт

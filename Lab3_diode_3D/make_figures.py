@@ -140,27 +140,32 @@ def figures_ise():
     print("ISE: A %.5f А, B %.5f А при 4 В" % (IA[-1], IB[-1]))
 
 
+PY_GRID = "t2"     # самописный решатель (python/sweep_ise.py): оси сетки ISE, деление 2 — 76 тыс. узлов
+DS_GRID = "tensor1"  # DEVSIM (devsim/run_ise.py --tensor 1): оси сетки ISE — 10 тыс. узлов
+
+
 def figures_python():
-    """Самописный решатель: тензорная сетка, структуры не рисуются."""
+    """Самописный решатель с физикой ISE (tools/dd3d_ise.py) на мелкой тензорной сетке, GPU."""
     out = OUT["python"]; os.makedirs(out, exist_ok=True)
+    f = {t: PY + "field_ise_%s_%s.npz" % (t, PY_GRID) for t in "AB"}
+    z = {t: np.load(f[t]) for t in "AB"}
     for t in "AB":
-        if os.path.exists(out + "z1_структура_%s.png" % t):
-            os.remove(out + "z1_структура_%s.png" % t)
-    A = np.load(PY + "iv_A.npz"); B = np.load(PY + "iv_B.npz")
+        v, tris, dop = pp.tensor_surface(z[t])
+        structure(out, "z1_структура_" + t, t, v, tris, dop)
+    A = np.load(PY + "iv_ise_A_%s.npz" % PY_GRID); B = np.load(PY + "iv_ise_B_%s.npz" % PY_GRID)
     ise.xy_ref([(B["V"], B["I"], "k"), (A["V"], A["I"], "r")], out + "z2_вах.png", **IV)
-    xa, ja = pp.j_top_abs(PY + "field_A.npz")         # |J| на верхней линии, как у эталона
-    xb, jb = pp.j_top_abs(PY + "field_B.npz")
+    xa, ja = pp.j_top_abs_edges(f["A"]); xb, jb = pp.j_top_abs_edges(f["B"])
     jt([(xb, jb, "k"), (xa, ja, "r")], out + "z2_ток_вдоль_границы.png")
-    z = {"A": np.load(PY + "field_A.npz"), "B": np.load(PY + "field_B.npz")}
     for nm, t, kind, value in CUTS:
         if QUANTITY[kind] == "charge":
             q = ise._t(pp.charge(z[t]))
             pl = plane(kind, value, *pp.cut_plane(z[t], kind, value), q.min(), q.max())
         else:
-            L = np.log10(pp.j_abs_tensor(z[t]))
+            L = np.log10(np.maximum(pp.j_abs_edges(z[t]), 1e-30))
             pl = plane(kind, value, *pp.cut_plane_field(z[t], L, kind, value), L.min(), L.max(), transform=False)
         cut(out, nm, t, kind, value, *pl)
-    print("самописный решатель: A %.5f А, B %.5f А при 4 В" % (A["I"][-1], B["I"][-1]))
+    print("самописный решатель (%d узлов): A %.5f А, B %.5f А при 4 В"
+          % (z["A"]["psi"].size, A["I"][-1], B["I"][-1]))
 
 
 def figures_devsim(name, fA, fB, ivA, ivB):
@@ -215,8 +220,8 @@ def sheets():
 if __name__ == "__main__":
     figures_ise()
     figures_python()
-    figures_devsim("devsim_ise", "field_ise_A_isemesh_clip.npz", "field_ise_B_isemeshA_clip.npz",
-                   "iv_ise_A_isemesh_clip.json", "iv_ise_B_isemeshA_clip.json")
+    figures_devsim("devsim_ise", "field_ise_A_%s_clip.npz" % DS_GRID, "field_ise_B_%s_clip.npz" % DS_GRID,
+                   "iv_ise_A_%s_clip.json" % DS_GRID, "iv_ise_B_%s_clip.json" % DS_GRID)
     if len(sys.argv) > 1:                         # сетка Gmsh (run.py): <scale> [<подвижность>]
         sc, mob = sys.argv[1], (sys.argv[2] if len(sys.argv) > 2 else "edge")
         figures_devsim("devsim_gmsh_%s" % sc, "field_A_%s_%s.npz" % (sc, mob), "field_B_%s_%s.npz" % (sc, mob),
