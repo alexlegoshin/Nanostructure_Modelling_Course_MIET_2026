@@ -85,12 +85,6 @@ def figures():
         # та же структура и тот же Vd: недостающий конец кривой — из задания 3
         m = t3[0] > s[k][0].max()
         s[k] = (np.concatenate([s[k][0], t3[0][m]]), np.concatenate([s[k][1], t3[1][m]]))
-    lad = iv(ISE + "task2_h000_ladder/New_t_msh.plt", "Gate OuterVoltage")
-    k0 = H_SCAN.index(0.0)
-    if s[k0] is not None and lad is not None:
-        # h = 0: обычная развёртка обрывается у 0.2 В, дальше — точки «лесенки» прыжков
-        m = lad[0] > s[k0][0].max()
-        s[k0] = (np.concatenate([s[k0][0], lad[0][m]]), np.concatenate([s[k0][1], lad[1][m]]))
     if any(c is not None for c in s):
         ise.xy_inspect([(c[0], c[1], C[k]) for k, c in enumerate(s) if c is not None],
                        OUT + "z2_вах_по_h.png", **FIG["z2_вах_по_h"])
@@ -106,7 +100,8 @@ def figures():
         print("задание 3: максимум второй производной x0 = %.3f В (порог), касательная — %.3f В" % (x0, vt))
     s = [iv(ISE + "task4/Vg_%s_t_msh.plt" % p, "Drain OuterVoltage") for p, _ in VG_CLOSED]
     if all(c is not None for c in s):
-        ise.xy_inspect([(c[0], c[1], C[k]) for k, c in enumerate(s)], OUT + "z4_вах.png", **FIG["z4_вах"])
+        cols = (C[0], C[1], C[2], C[3], C[5])           # на эталоне нижняя кривая фиолетовая
+        ise.xy_inspect([(c[0], c[1], col) for c, col in zip(s, cols)], OUT + "z4_вах.png", **FIG["z4_вах"])
         made.append("z4_вах")
     return made
 
