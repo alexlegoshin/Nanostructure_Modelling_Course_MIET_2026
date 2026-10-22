@@ -332,3 +332,63 @@ def _xy_inspect(series, path, size, frame, xlim, ylim, xstep, ystep, title, xlab
     fig.savefig(path, dpi=100, facecolor="white")
     plt.close(fig)
     return path
+
+
+# палитра Svisual в работе 5 (снята с эталонов)
+SVISUAL = {"maroon": (176, 48, 96), "green": (0, 255, 0), "blue": (0, 0, 255), "red": (255, 0, 0),
+           "black": (0, 0, 0), "cyan": (64, 224, 208), "magenta": (255, 0, 255)}
+
+
+def xy_svisual(series, path, size, frame, xlim, ylim, xstep, ystep, title="", xlabel="", ylabel="",
+               xfmt="{:g}", yfmt="{:g}", fs=11, legend_x=None, lw=3, xminor=5, yminor=5):
+    """График в стиле эталонов работы 5 (Svisual): рамка в заданных пикселях, заголовок
+    по центру над рамкой, Helvetica, засечки внутрь, пунктирная сетка, легенда в рамке
+    справа от графика. series — список (x, y, цвет RGB, подпись или None).
+    ylim=None — ось ровно по данным, как у Svisual."""
+    with matplotlib.rc_context({"text.antialiased": False}):
+        W, H = size
+        l, r, t, b = frame
+        fig = plt.figure(figsize=((W + 0.1) / 100.0, (H + 0.1) / 100.0), dpi=100)
+        ax = fig.add_axes([l / W, 1 - b / H, (r - l) / W, (b - t) / H])
+        for x, y, col, _ in series:
+            ax.plot(x, y, color=tuple(v / 255.0 for v in col), lw=(lw - 0.9) * PX, antialiased=False,
+                    solid_joinstyle="miter")
+        ax.set_xlim(*xlim)
+        if ylim is None:
+            ys = np.concatenate([np.asarray(s[1], float) for s in series]); ylim = (ys.min(), ys.max())
+        ax.set_ylim(*ylim)
+        from matplotlib.ticker import MultipleLocator
+        ax.xaxis.set_major_locator(MultipleLocator(xstep)); ax.yaxis.set_major_locator(MultipleLocator(ystep))
+        ax.xaxis.set_minor_locator(AutoMinorLocator(xminor)); ax.yaxis.set_minor_locator(AutoMinorLocator(yminor))
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: xfmt.format(v) if abs(v) > 1e-12 else "0"))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: yfmt.format(v) if abs(v) > 1e-12 else "0"))
+        ax.tick_params(which="major", direction="in", length=8 * PX, width=1 * PX, top=False, right=False,
+                       labelsize=fs, pad=4 * PX)
+        ax.tick_params(which="minor", direction="in", length=4 * PX, width=1 * PX, top=False, right=False)
+        ax.grid(True, which="major", color="k", lw=1 * PX, ls=(0, (3, 3)))
+        for sp in ax.spines.values():
+            sp.set_linewidth(1 * PX); sp.set_color("k")
+        for tl in ax.get_xticklabels() + ax.get_yticklabels():
+            tl.set_fontfamily(HELV)
+        fig.text((l + r) / 2 / W, 1 - (t - 18) / H, title, ha="center", va="center", fontfamily=HELV, fontsize=fs)
+        fig.text((l + r) / 2 / W, 1 - (b + 40) / H, xlabel, ha="center", va="center", fontfamily=HELV, fontsize=fs)
+        fig.text((l - 52) / W, 1 - (t + b) / 2 / H, ylabel, rotation=90, ha="center", va="center",
+                 fontfamily=HELV, fontsize=fs)
+        labels = [(s[2], s[3]) for s in series if s[3]]
+        if labels:
+            from matplotlib.patches import Rectangle
+            lx = legend_x if legend_x is not None else r + 4
+            rowh, w = 16, 112
+            fig.patches.append(Rectangle((lx / W, 1 - (t + 4 + rowh * len(labels)) / H), w / W,
+                                         (rowh * len(labels) + 4) / H, transform=fig.transFigure,
+                                         fill=False, lw=1 * PX, ec="k"))
+            for k, (col, lab) in enumerate(labels):
+                yy = 1 - (t + 4 + rowh * k + rowh / 2) / H
+                fig.lines.append(matplotlib.lines.Line2D([(lx + 6) / W, (lx + 30) / W], [yy, yy],
+                                 transform=fig.transFigure, color=tuple(v / 255.0 for v in col),
+                                 lw=3 * PX, antialiased=False))
+                fig.text((lx + 34) / W, yy, lab, ha="left", va="center", fontfamily=HELV,
+                         fontweight="bold", fontsize=fs * 0.75)
+        fig.savefig(path, dpi=100, facecolor="white")
+        plt.close(fig)
+    return path

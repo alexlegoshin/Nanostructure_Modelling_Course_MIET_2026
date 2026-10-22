@@ -1,0 +1,48 @@
+Material = "GaAs" {
+
+Ionization
+{
+	E_As_0 = 0.054	# [eV]
+	alpha_As = 3.1000e-08	# [eV cm]
+	g_As = 2	# [1]
+	Xsec_As = 1.0000e-12	# [cm^2/sec]
+
+	E_P_0 = 0.006	# [eV]
+	alpha_P = 3.1000e-08	# [eV cm]
+	g_P = 2	# [1]
+	Xsec_P = 1.0000e-12	# [cm^2/sec]
+
+	E_Sb_0 = 0.039	# [eV]
+	alpha_Sb = 3.1000e-08	# [eV cm]
+	g_Sb = 2	# [1]
+	Xsec_Sb = 1.0000e-12	# [cm^2/sec]
+
+	E_B_0 = 0.045	# [eV]
+	alpha_B = 3.1000e-08	# [eV cm]
+	g_B = 4	# [1]
+	Xsec_B = 1.0000e-12	# [cm^2/sec]
+
+	E_In_0 = 0.16	# [eV]
+	alpha_In = 3.1000e-08	# [eV cm]
+	g_In = 4	# [1]
+	Xsec_In = 1.0000e-12	# [cm^2/sec]
+
+	E_N_0 = 0.045	# [eV]
+	alpha_N = 3.1000e-08	# [eV cm]
+	g_N = 2	# [1]
+	Xsec_N = 1.0000e-12	# [cm^2/sec]
+
+	E_NDopant_0 = 0.045	# [eV]
+	alpha_NDopant = 3.1000e-08	# [eV cm]
+	g_NDopant = 2	# [1]
+	Xsec_NDopant = 1.0000e-12	# [cm^2/sec]
+
+	E_PDopant_0 = 0.045	# [eV]
+	alpha_PDopant = 3.1000e-08	# [eV cm]
+	g_PDopant = 4	# [1]
+	Xsec_PDopant = 1.0000e-12	# [cm^2/sec]
+	NdCrit = 1.0000e+22	# [cm-3]
+	NaCrit = 1.0000e+22	# [cm-3]
+}
+
+}
