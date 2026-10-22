@@ -50,7 +50,19 @@ Solve {
 	}
 	NewCurrent="New_"
 	Quasistationary (
-		MaxStep=0.01
+		MaxStep=0.01 MinStep=1e-6
+		Goal {Name="Gate" Voltage=-0.3}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=-0.075}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		MaxStep=0.01 MinStep=1e-6
 		Goal {Name="Gate" Voltage=1.5}
 	) {
 		Coupled { Poisson Electron Hole }

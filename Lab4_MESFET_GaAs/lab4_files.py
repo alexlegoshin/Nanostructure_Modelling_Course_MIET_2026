@@ -246,3 +246,18 @@ def des_transfer(vg0, step, vd=2.0, vg1=1.5):
     s += '\tNewCurrent="New_"\n'
     s += _STEP.format(step=step, goals='Goal {Name="Gate" Voltage=%g}' % vg1)
     return _DES_HEAD + s + "}\n"
+
+
+def des_transfer_jumps(vg0, segments, vd=2.0):
+    """Как des_transfer, но развёртка по затвору — участками [(Vg до, шаг, прыжок)].
+    У ISE 7.0 на некоторых структурах есть узкие напряжения, где метод Ньютона не сходится
+    ни при каком шаге (при h = 0.01 — около Vg = −0.15 В); их проходит один крупный шаг
+    (прыжок = True: шаг на весь участок, без дробления). Неудачный участок ISE пропускает
+    и продолжает со следующего, поэтому «лесенка» из прыжков проходит любые такие стены."""
+    s = "\nSolve {\n\tCoupled ( Iterations=100 ) { Poisson }\n\tCoupled { Poisson Electron Hole }\n"
+    s += _STEP.format(step=0.1, goals='Goal {Name="Drain" Voltage=%g}\n\t\tGoal {Name="Gate" Voltage=%g}' % (vd, vg0))
+    s += '\tNewCurrent="New_"\n'
+    for vg, step, jump in segments:
+        st = "InitialStep=1 MaxStep=1 MinStep=0.99" if jump else "MaxStep=%g MinStep=1e-6" % step
+        s += _STEP.replace("MaxStep={step}", st).format(goals='Goal {Name="Gate" Voltage=%g}' % vg)
+    return _DES_HEAD + s + "}\n"

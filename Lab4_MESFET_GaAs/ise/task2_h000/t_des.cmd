@@ -50,7 +50,187 @@ Solve {
 	}
 	NewCurrent="New_"
 	Quasistationary (
-		MaxStep=0.05
+		MaxStep=0.05 MinStep=1e-6
+		Goal {Name="Gate" Voltage=0}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.05}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.1}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.15}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.2}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.25}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.3}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.35}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.4}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.45}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.5}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.55}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.6}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.65}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.7}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.75}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.8}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.85}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.9}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=0.95}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.05}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.1}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.15}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.2}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.25}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.3}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.35}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.4}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
+		Goal {Name="Gate" Voltage=1.45}
+	) {
+		Coupled { Poisson Electron Hole }
+	}
+	Quasistationary (
+		InitialStep=1 MaxStep=1 MinStep=0.99
 		Goal {Name="Gate" Voltage=1.5}
 	) {
 		Coupled { Poisson Electron Hole }

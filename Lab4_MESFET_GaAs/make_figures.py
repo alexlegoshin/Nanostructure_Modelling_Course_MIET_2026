@@ -79,6 +79,12 @@ def figures():
         ise.xy_inspect([(c[0], c[1], C[k]) for k, c in enumerate(s)], OUT + "z1_вах.png", **FIG["z1_вах"])
         made.append("z1_вах")
     s = [iv(ISE + "task2_h%03d/New_t_msh.plt" % round(h * 1000), "Gate OuterVoltage") for h in H_SCAN]
+    t3 = iv(ISE + "task3/New_t_msh.plt", "Gate OuterVoltage")
+    k = H_SCAN.index(H_CLOSED)
+    if s[k] is not None and t3 is not None and s[k][0].max() < 1.5 - 1e-3:
+        # та же структура и тот же Vd: недостающий конец кривой — из задания 3
+        m = t3[0] > s[k][0].max()
+        s[k] = (np.concatenate([s[k][0], t3[0][m]]), np.concatenate([s[k][1], t3[1][m]]))
     if any(c is not None for c in s):
         ise.xy_inspect([(c[0], c[1], C[k]) for k, c in enumerate(s) if c is not None],
                        OUT + "z2_вах_по_h.png", **FIG["z2_вах_по_h"])
@@ -86,11 +92,12 @@ def figures():
     c = iv(ISE + "task3/New_t_msh.plt", "Gate OuterVoltage")
     if c is not None:
         vt, x0, V, I, d1, d2 = threshold(*c)
-        f = dict(FIG["z3_порог"], title="Gate:   h = %g (mkm),   VT = %.2f (V)" % (H_CLOSED, vt))
+        # как на эталоне: x0 и VT близки, и порогом берётся x0 (замечание 1 методических указаний)
+        f = dict(FIG["z3_порог"], title="Gate:   h = %g (mkm),   VT = %.2f (V)" % (H_CLOSED, x0))
         # как на эталоне: первая производная уменьшена вдвое, вторая — в пять раз
         ise.xy_inspect([(V, I, C[0]), (V, d1 / 2, C[1], ":"), (V, d2 / 5, C[3])], OUT + "z3_порог.png", **f)
         made.append("z3_порог")
-        print("задание 3: x0 = %.3f В, VT = %.3f В" % (x0, vt))
+        print("задание 3: максимум второй производной x0 = %.3f В (порог), касательная — %.3f В" % (x0, vt))
     s = [iv(ISE + "task4/Vg_%s_t_msh.plt" % p, "Drain OuterVoltage") for p, _ in VG_CLOSED]
     if all(c is not None for c in s):
         ise.xy_inspect([(c[0], c[1], C[k]) for k, c in enumerate(s)], OUT + "z4_вах.png", **FIG["z4_вах"])
