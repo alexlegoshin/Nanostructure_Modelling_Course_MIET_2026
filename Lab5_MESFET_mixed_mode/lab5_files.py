@@ -157,7 +157,7 @@ def des_gate(vd=1.0, vg0=-10.0, vg1=2.0):
     return _single(s)
 
 
-def des_family2(vds=(0.1, 0.2, 0.5, 0.8, 1.0, 1.5, 2.0), vg0=-10.0, vg1=2.0):
+def des_family2(vds=(0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0), vg0=-10.0, vg1=2.0):
     """Семейство Id(Vg) при нескольких Vd (Vd_<мВ/10>_t_des.plt)."""
     s = '\tSave (FilePrefix="VdVg_00")\n'
     tag = lambda v: "%03d" % round(v * 100)
@@ -168,6 +168,17 @@ def des_family2(vds=(0.1, 0.2, 0.5, 0.8, 1.0, 1.5, 2.0), vg0=-10.0, vg1=2.0):
         s += '\tLoad (FilePrefix="Vd_%s")\n\tNewCurrent="Vd_%s_"\n' % (tag(v), tag(v))
         s += _qs([("gate", vg1)], "InitialStep=1e-3 MaxStep=0.01 MinStep=1e-15", "\n\t\tIncrement = 1.1")
     return _single(s)
+
+
+def des_open_channel(vd=2.0, vg0=-10.0, vg1=2.0):
+    """Id(Vg) при Vd = 2 В от открытого канала: Vg = 0 → 2 В (Vd2up_t_des.plt) и 0 → −10 В
+    (Vd2dn_t_des.plt). Прямой проход des_family2 при этом Vd останавливается у
+    Vg ≈ −6.7 В — Ньютон не сходится при любом шаге."""
+    st = "InitialStep=1e-3 MaxStep=0.01 MinStep=1e-15"
+    s = _qs([("drain", vd)], "InitialStep=1e-3 MaxStep=0.05 MinStep=1e-15") + '\tSave (FilePrefix="Vd2_g0")\n'
+    s += '\tNewCurrent="Vd2up_"\n' + _qs([("gate", vg1)], st, "\n\t\tIncrement = 1.1")
+    s += '\tLoad (FilePrefix="Vd2_g0")\n\tNewCurrent="Vd2dn_"\n' + _qs([("gate", vg0)], st, "\n\t\tIncrement = 1.1")
+    return _single(s).replace('"t_des.dat"', '"vd2_des.dat"').replace('"t_des.log"', '"vd2_des.log"')
 
 
 def inductance(f0, C=1.25e-6):

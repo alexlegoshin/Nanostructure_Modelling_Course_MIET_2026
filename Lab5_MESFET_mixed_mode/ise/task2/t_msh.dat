@@ -6,9 +6,9 @@ Info {
 version     =  1
 dimension   =  2
 nb_vertices =  901
-nb_edges    =  2574
+nb_edges    =  1764
 nb_faces    =  0
-nb_elements =  1686
+nb_elements =  876
 nb_regions  =  4
 datasets     = [ "DopingConcentration" "PhosphorusActiveConcentration"  ]
 functions     = [ DopingConcentration PhosphorusActiveConcentration  ]

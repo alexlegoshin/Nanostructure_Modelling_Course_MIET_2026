@@ -46,12 +46,12 @@ Solve {
 	Load (FilePrefix="VdVg_00")
 	Quasistationary (
 		InitialStep=1e-3 MaxStep=0.1 MinStep=1e-15
-		Goal {Name="drain" Voltage=0.2}
+		Goal {Name="drain" Voltage=0.25}
 		Goal {Name="gate" Voltage=-10}
 	) {
 		Coupled { Poisson Electron Hole }
 	}
-	Save (FilePrefix="Vd_020")
+	Save (FilePrefix="Vd_025")
 	Load (FilePrefix="VdVg_00")
 	Quasistationary (
 		InitialStep=1e-3 MaxStep=0.1 MinStep=1e-15
@@ -64,12 +64,12 @@ Solve {
 	Load (FilePrefix="VdVg_00")
 	Quasistationary (
 		InitialStep=1e-3 MaxStep=0.1 MinStep=1e-15
-		Goal {Name="drain" Voltage=0.8}
+		Goal {Name="drain" Voltage=0.75}
 		Goal {Name="gate" Voltage=-10}
 	) {
 		Coupled { Poisson Electron Hole }
 	}
-	Save (FilePrefix="Vd_080")
+	Save (FilePrefix="Vd_075")
 	Load (FilePrefix="VdVg_00")
 	Quasistationary (
 		InitialStep=1e-3 MaxStep=0.1 MinStep=1e-15
@@ -106,8 +106,8 @@ Solve {
 	) {
 		Coupled { Poisson Electron Hole }
 	}
-	Load (FilePrefix="Vd_020")
-	NewCurrent="Vd_020_"
+	Load (FilePrefix="Vd_025")
+	NewCurrent="Vd_025_"
 	Quasistationary (
 		InitialStep=1e-3 MaxStep=0.01 MinStep=1e-15
 		Increment = 1.1
@@ -124,8 +124,8 @@ Solve {
 	) {
 		Coupled { Poisson Electron Hole }
 	}
-	Load (FilePrefix="Vd_080")
-	NewCurrent="Vd_080_"
+	Load (FilePrefix="Vd_075")
+	NewCurrent="Vd_075_"
 	Quasistationary (
 		InitialStep=1e-3 MaxStep=0.01 MinStep=1e-15
 		Increment = 1.1

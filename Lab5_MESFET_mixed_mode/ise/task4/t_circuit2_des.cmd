@@ -19,7 +19,7 @@ Device MESFET {
 }
 
 System {
-	Vsource_pset v1 (n1 n0) { dc = -5.63 }
+	Vsource_pset v1 (n1 n0) { dc = -5.57 }
 	Vsource_pset v2 (n2 n1) { sine = ( 0.0 0.4 9000 0.0 0.0) }
 	Vsource_pset v3 (n3 n2) { sine = ( 0.0 0.25 1000 0.0 0.0) }
 	Vsource_pset v4 (n6 n0) { dc = 1 }
