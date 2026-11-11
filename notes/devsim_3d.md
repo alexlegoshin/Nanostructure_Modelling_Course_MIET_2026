@@ -1,6 +1,10 @@
 # Validating DEVSIM Against ISE in 3D: Control-Volume Error, ISE Physics Port and Comparison with the Reference
 
-[← к README](../README.md)
+[Русский](#русский) · [English](#english) · [← к README](../README.md)
+
+## Русский
+
+### Проверка DEVSIM по ISE в 3D
 
 На первой сетке ISE диод B работы 3 не сходился (в итоге оба диода рассчитаны в ISE
 на сетке эталона — см. [заметку об ISE на практике](ise_in_practice.md#3d-в-ise-решатель-сетка-и-ложные-признаки-успеха)).
@@ -10,7 +14,7 @@
 устранить ошибку в самом DEVSIM, перенести физические модели из командного файла
 ISE и проверить решение на задаче, для которой результат ISE известен.
 
-## Содержание
+#### Содержание
 
 - [Завышение объёмов ячеек в DEVSIM](#завышение-объёмов-ячеек-в-devsim)
 - [Физические модели из командного файла ISE](#физические-модели-из-командного-файла-ise)
@@ -23,7 +27,7 @@ ISE и проверить решение на задаче, для которо�
 
 ---
 
-## Завышение объёмов ячеек в DEVSIM
+### Завышение объёмов ячеек в DEVSIM
 
 В методе конечных объёмов поток по ребру умножается на площадь грани ячейки
 Вороного, через которую он идёт (`EdgeCouple`). На тетраэдре кусок этой грани —
@@ -44,20 +48,25 @@ DEVSIM 2.11 в 3D складывает эти вклады **по модулю**
 на 10–15%, на сетке Gmsh — почти вдвое. Ошибка найдена в расчётах на ПК и
 перепроверена на маке на тех же сетках (`NodeVolume` в сумме).
 
-Встроенную `EdgeCouple` в DEVSIM не заменить, поэтому площади пересчитываются
-со знаком отдельно ([tools/voronoi3d.py](../tools/voronoi3d.py)) и
+Площади пересчитываются со знаком отдельно ([tools/voronoi3d.py](../tools/voronoi3d.py)) и
 подставляются множителями: все рёберные потоки — на `CR` = правильная площадь /
 `EdgeCouple`, узловые заряды — на `VR` = правильный объём / `NodeVolume`. Со
 знаками сумма A·L/3 по рёбрам тетраэдра равна его объёму в точности; объём
 прибора — ровно 2.4. Режим `clip` дополнительно обрезает отрицательные площади
 в ноль; на сетке ISE это то же самое (отрицательные там — шум ~10⁻¹⁷ мкм²).
 
+Ошибка отправлена разработчикам как [devsim/devsim#171](https://github.com/devsim/devsim/issues/171).
+Автор DEVSIM указал, что она известна (метод предполагает центры описанных сфер внутри
+тетраэдров) и что встроенные модели площадей и объёмов заменяются через параметры
+(`edge_couple_model`, `node_volume_model`, `element_edge_couple_model` и другие). Такой
+путь чище множителей; он пока не опробован.
+
 Исследование по сеткам —
 [experiments/mesh_quality/](../experiments/mesh_quality/): объём и площади
 контактов, отрицательные `EdgeCouple` на сетках не-Делоне, сравнение со знаком
 против DEVSIM.
 
-## Физические модели из командного файла ISE
+### Физические модели из командного файла ISE
 
 Первоначально использовались модели самописного решателя (Коги — Томас, SRH).
 Они давали 9.8–21 мА вместо 5.2 — отчасти из-за ячеек, отчасти из-за отличий в
@@ -98,7 +107,7 @@ DEVSIM 2.11 в 3D складывает эти вклады **по модулю**
 `Enormal` — модель Ломбарди для границы полупроводника с диэлектриком. Диэлектрика
 в приборе нет, так что у ISE она ни на что не влияет, и здесь не сделана.
 
-## Сетка ISE и проверка сходимости
+### Сетка ISE и проверка сходимости
 
 Тетраэдры, контакты и легирование в узлах читаются прямо из `sA_msh.grd` /
 `sA_msh.dat` ([tools/ise_grid.py](../tools/ise_grid.py)). Анод диода B — правая
@@ -123,7 +132,7 @@ N = 1, 76 тыс. при N = 2. На тех же сетках независим
 На сетке эталона отрицательных граней ячеек нет (`--box signed` и `clip` дают
 одно и то же), так что остаток расхождения относится к дискретизации.
 
-## Сравнение с эталоном варианта 2
+### Сравнение с эталоном варианта 2
 
 Эталонные иллюстрации варианта 2 построены в Sentaurus TCAD 2012 — пакете, под
 который написаны методические указания. Толщина прибора на них — 0.8 мкм, как в
@@ -150,7 +159,7 @@ ISE на сетке эталона воспроизводит эталон в п
 ([devsim/reference_iv.py](../Lab3_diode_3D/devsim/reference_iv.py)); ниже 1.5 В,
 где кривая наиболее крутая, точность оцифровки ниже.
 
-## Первый подход: сетка Gmsh
+### Первый подход: сетка Gmsh
 
 Первоначально расчёт выполнялся на сетке [Gmsh](https://gmsh.info) со сгущением к
 переходу и кромкам анода: переход и анод встроены в геометрию как поверхности,
@@ -170,7 +179,7 @@ ISE на сетке эталона воспроизводит эталон в п
 приведены для полноты. Корректный расчёт выполняет `run_ise.py`, в том числе на
 сетке Gmsh (`--gmsh 2.5`) с поправкой.
 
-## Визуализация результатов DEVSIM
+### Визуализация результатов DEVSIM
 
 [tools/py3d_plots.py](../tools/py3d_plots.py), сводный лист собирает
 [make_figures.py](../Lab3_diode_3D/make_figures.py).
@@ -190,7 +199,7 @@ ISE на сетке эталона воспроизводит эталон в п
   по рёбрам, даёт ток через горизонтальные сечения от 5.4 до 11.5 мА при токе
   контакта 9.8.
 
-## Численная часть
+### Численная часть
 
 - **Прямой решатель обязателен.** Итерационный GMRES под смещением сообщает о
   сходимости на неправильном решении.
@@ -206,7 +215,7 @@ ISE на сетке эталона воспроизводит эталон в п
 - **Воспроизводимость.** ВАХ с мака (M1, OpenBLAS) и с ПК (FX-8320, MKL) совпали
   до 10⁻¹⁵.
 
-## Файлы и запуск
+### Файлы и запуск
 
 | | |
 |---|---|
@@ -226,4 +235,147 @@ python run_ise.py B --fast          # B на сетке A
 python run_ise.py A --tensor 1      # проверка сходимости по сетке
 python plot_ise.py                  # картинка верификации
 cd .. && python make_figures.py     # сводный лист results/devsim_ise/
+```
+
+---
+
+## English
+
+### Validating DEVSIM against ISE in 3D
+
+On the first ISE mesh, diode B of lab 3 did not converge (in the end both diodes were computed in ISE on the reference mesh — see the [note on ISE in practice](ise_in_practice.md#3d-in-ise-solver-mesh-and-false-signs-of-success)). The problem was therefore also solved in [DEVSIM](https://devsim.org), an open-source finite-volume device simulator with a Python interface; it is also used to check mesh convergence. Supporting the results required fixing an error in DEVSIM itself, porting the physical models from the ISE command file and checking the solution on a problem for which the ISE result is known.
+
+#### Contents
+
+- [Control volumes overestimated in DEVSIM](#control-volumes-overestimated-in-devsim)
+- [Physical models from the ISE command file](#physical-models-from-the-ise-command-file)
+- [ISE mesh and convergence check](#ise-mesh-and-convergence-check)
+- [Comparison with the variant 2 reference](#comparison-with-the-variant-2-reference)
+- [First approach: Gmsh mesh](#first-approach-gmsh-mesh)
+- [Visualizing DEVSIM results](#visualizing-devsim-results)
+- [Numerics](#numerics)
+- [Files and running](#files-and-running)
+
+### Control volumes overestimated in DEVSIM
+
+In the finite volume method the flux along an edge is multiplied by the area of the Voronoi cell face it crosses (`EdgeCouple`). In a tetrahedron the piece of this face is a quadrilateral: the edge midpoint, the circumcenters of the two adjacent faces and the circumcenter of the tetrahedron. If the circumcenter lies outside the tetrahedron, part of the contributions are negative, and it is exactly these that cancel the excess added by the neighbours.
+
+DEVSIM 2.11 adds these contributions **in absolute value** in 3D, and the total cell volume exceeds the device volume:
+
+| mesh | sum of cell volumes | geometry |
+|---|---|---|
+| ISE, diode A | 3.06 µm³ | 2.4 µm³ |
+| Gmsh, 8.6 thousand nodes | 4.54–4.60 µm³ | 2.4 µm³ |
+| Gmsh, 15.5 thousand nodes | 4.00 µm³ | 2.4 µm³ |
+
+The edge conductances are overestimated by the same factor, and the current comes out higher than the true one: by 10–15% on the ISE mesh and almost twofold on the Gmsh mesh. The error was found in the PC runs and re-checked on the Mac on the same meshes (sum of `NodeVolume`).
+
+The areas are recomputed with sign separately ([tools/voronoi3d.py](../tools/voronoi3d.py)) and applied as multipliers: all edge fluxes are multiplied by `CR` = correct area / `EdgeCouple`, and the nodal charges by `VR` = correct volume / `NodeVolume`. With signs, the sum of A·L/3 over the edges of a tetrahedron equals its volume exactly, and the device volume is exactly 2.4. The `clip` mode additionally clips negative areas to zero; on the ISE mesh this makes no difference (the negative values there are noise of ~10⁻¹⁷ µm²).
+
+The problem was reported as [devsim/devsim#171](https://github.com/devsim/devsim/issues/171). The DEVSIM author pointed out that it is known (the method assumes that circumcenters lie inside the tetrahedra) and that the built-in area and volume models can be replaced through parameters (`edge_couple_model`, `node_volume_model`, `element_edge_couple_model` and others). That route would be cleaner than the multipliers; it has not been tried yet.
+
+A study across meshes is in [experiments/mesh_quality/](../experiments/mesh_quality/): volume and contact areas, negative `EdgeCouple` on non-Delaunay meshes, signed values against DEVSIM.
+
+### Physical models from the ISE command file
+
+Initially the models of the own solver were used (Caughey–Thomas, SRH). They gave 9.8–21 mA instead of 5.2, partly because of the cells and partly because of the differences in the physical models. `sA_des.cmd` enables `Mobility(DopingDep HighFieldsat Enormal)` and `BandGapNarrowing(OldSlotboom)`, with no recombination. In [tools/dev_ise.py](../tools/dev_ise.py) this is ported as follows:
+
+- doping-dependent mobility: the Masetti model;
+- velocity saturation: Canali, v<sub>sat</sub> = 1.07·10⁷ / 8.37·10⁶ cm/s, β = 1.109 / 1.213 for electrons / holes;
+- bandgap narrowing: Slotboom (OldSlotboom);
+- no recombination, as in ISE.
+
+**In ISE 7 saturation is driven by |E| on the element**, not by the quasi-Fermi level gradient as in newer Sentaurus versions, and not by the projection of the field onto the edge. ISE writes the nodal mobilities `eMobility`/`hMobility` to `sA_des.dat`: inverting the Canali formula on them gives the driving force, whose median ratio to |E| is exactly 1.00 for both carriers, and at low field the mobility matches Masetti to 1–3% ([experiments/ise_physics/](../experiments/ise_physics/)). So in DEVSIM the field is assembled on each tetrahedron from its edges, the mobility is computed on the element, and the Scharfetter–Gummel flux is taken as an element model (`HFS_DRIVE = "elem"`, the default). Variants on the reference mesh:
+
+| driving force | current at 3.95 V, A / B | against ISE |
+|---|---|---|
+| quasi-Fermi level gradient | — | IV knee twice as high, slope n = 1.03 at low currents |
+| field projection onto the edge | 5.58 / 3.44 mA | +3.4% / +4.2% |
+| **\|E\| on the tetrahedron** | **5.34 / 3.29 mA** | **−1.0% / −0.4%** |
+
+At the points of the ISE IV itself (DEVSIM with a 0.025 V step) the discrepancy at 0.4–4 V ranges from −3.4% to −1.0% (A) and from −3.4% to −0.4% (B). The earlier "dip at the knee" (−15% at 1 V) was an artifact of logarithmic interpolation between the sparse points of both IVs.
+
+**n<sub>i</sub> = 1.4385·10¹⁰ cm⁻³**, calibrated on the ISE IV at 0.1–0.5 V: there the current is proportional to n<sub>i</sub>², and the ratio to ISE is constant.
+
+`Enormal` is the Lombardi model for a semiconductor–insulator interface. There is no insulator in the device, so in ISE it has no effect, and it is not implemented here.
+
+### ISE mesh and convergence check
+
+Tetrahedra, contacts and nodal doping are read directly from `sA_msh.grd` / `sA_msh.dat` ([tools/ise_grid.py](../tools/ise_grid.py)). The anode of diode B is the right half of anode A on the same mesh: the line x = 0.5 is a line of nodes there, and no anode triangle crosses it, so the anode is cut out exactly. The instructor's mesh command files for A and B are identical, so this is the same setup.
+
+Mesh convergence was checked with tensor meshes on the axes of the reference mesh ([tools/tensor_mesh.py](../tools/tensor_mesh.py)): each box is split into 6 Kuhn tetrahedra sharing a diagonal, the cell faces are exact rectangles, and all areas are non-negative. Dividing each axis segment into N parts gives 10 thousand nodes for N = 1 and 76 thousand for N = 2. The own solver ([tools/dd3d_ise.py](../tools/dd3d_ise.py)) runs independently on the same meshes — see README, lab 3.
+
+Agreement of DEVSIM with ISE on the same mesh:
+
+| mesh | nodes | 1.5–4 V | 0.3–1 V |
+|---|---|---|---|
+| first | 5751 | −3.5…−0.9% (diode A) | 0.05% |
+| reference | 1820 | −1.9…−0.4% (A and B) | −3.4…−1.3% |
+
+The reference mesh has no negative cell faces (`--box signed` and `clip` give the same result), so the remaining discrepancy is due to the discretization.
+
+### Comparison with the variant 2 reference
+
+The variant 2 reference figures were made in Sentaurus TCAD 2012, the package the lab manual is written for. The device thickness on them is 0.8 µm, as in the variant: the charge profile on the reference cross-section matches the computation at 0.8 µm.
+
+Current, mA:
+
+| U, V | reference A | ISE A, reference mesh | DEVSIM A, 10 thousand nodes | reference B | ISE B, reference mesh | DEVSIM B, 10 thousand nodes |
+|---|---|---|---|---|---|---|
+| 1.5 | 3.01 | 3.09 | 3.03 | 2.03 | 2.11 | 2.00 |
+| 2.0 | 4.14 | 4.21 | 4.11 | 2.68 | 2.74 | 2.57 |
+| 3.0 | 5.03 | 5.10 | 4.96 | 3.11 | 3.16 | 2.94 |
+| 3.95 | 5.30 | 5.39 | 5.24 | 3.25 | 3.30 | 3.07 |
+
+ISE on the reference mesh reproduces the reference within 1.4–4%. With mesh refinement the current keeps changing: on 76 thousand nodes (own GPU solver, same physics) current A at 1.5 V is 3.55 mA (reference 3.01), and current B at 3.95 V is 2.80 mA (reference 3.25). The coarse reference mesh softens the IV knee and overestimates the current of the narrow anode: the contact control volumes extend half a cell beyond the anode edge. The earlier estimates (+31% and −11%) were inflated by an inaccurate saturation model (field projection onto the edge), but the conclusion stands: the reference is reproduced by repeating its mesh, not by a more accurate computation.
+
+The reference IV was digitized from `reference/z2_вах.png` pixel by pixel ([devsim/reference_iv.py](../Lab3_diode_3D/devsim/reference_iv.py)); below 1.5 V, where the curve is steepest, the digitization is less accurate.
+
+### First approach: Gmsh mesh
+
+Initially the computation was done on a [Gmsh](https://gmsh.info) mesh refined towards the junction and the anode edges: the junction and the anode are embedded in the geometry as surfaces, so the doping step and the contact edge fall exactly on nodes ([tools/mesh3d.py](../tools/mesh3d.py), [tools/dev3d.py](../tools/dev3d.py), [devsim/run.py](../Lab3_diode_3D/devsim/run.py)). The mobility is that of the own solver, with saturation driven either by the field along the edge or by the full |E| on the tetrahedron (an element model, the 3D analogue of `mos_physics.py`).
+
+| diode A, current at 4 V | 8.6 thousand nodes | 15.5 thousand nodes |
+|---|---|---|
+| constant mobility | 21.5 mA | — |
+| saturation by the projection onto the edge | 12.1 mA | 11.4 mA |
+| saturation by \|E\| on the tetrahedron | 10.4 mA | 9.8 mA |
+
+All these values are inflated by the cell volume error (4.0–4.6 µm³ instead of 2.4) and are given for completeness. The correct computation is `run_ise.py`, including on the Gmsh mesh (`--gmsh 2.5`) with the correction.
+
+### Visualizing DEVSIM results
+
+[tools/py3d_plots.py](../tools/py3d_plots.py); the summary sheet is assembled by [make_figures.py](../Lab3_diode_3D/make_figures.py).
+
+- **Slices** are interpolated on the actual mesh tetrahedra (barycentrically), not on a triangulation rebuilt from the node cloud: the sliver tetrahedra of the latter drag values across the doping step and produce false bands on the slice. The interpolation is done in the arsinh scale, as in picasso.
+- **Current density on a face** is computed from the nodal currents in the same discretization that DEVSIM solved: edge flux × cell face area (with the `CR` correction). The sum over the anode nodes matches the contact current to six digits, and the balance inside the device is zero, which is the check. The nodal "current / area" on an unstructured mesh is noisy by tens of percent, so a smoothed ratio Σ I·w / Σ A·w with a 0.04 µm window is used, and no current is lost.
+- Simpler methods do not work: a field difference near the face gives an answer that depends several-fold on the depth of the second point, and the J vector assembled on a tetrahedron from six edge fluxes gives currents through horizontal sections from 5.4 to 11.5 mA with a contact current of 9.8 mA.
+
+### Numerics
+
+- **A direct solver is mandatory.** Iterative GMRES under bias reports convergence on a wrong solution.
+- **float128.** The Scharfetter–Gummel current is a difference of large fluxes, and the concentrations range from 10³ to 10¹⁷ cm⁻³. In double Newton stalls at 10⁻⁵, and the current at 0.1 V comes out in milliamperes. With `extended_model` + `extended_equation` convergence is quadratic down to 10⁻¹¹. It is needed only at low currents; above 0.7 V double is enough (`--fast`).
+- **Memory.** On the first ISE mesh (5.8 thousand nodes): 1.3 GB, 45 s per diode on M1 (`--fast`); on the reference mesh (1.8 thousand): 0.6 GB, 150 s with float128 and 10 s with `--fast`. On a Gmsh mesh UMFPACK takes about 2.6 GB for 34 thousand nodes; the fine meshes were run on the PC — see the [workstation note](workstation_fx8320_titanx.md#english).
+- **Reproducibility.** The IVs from the Mac (M1, OpenBLAS) and from the PC (FX-8320, MKL) agree to 10⁻¹⁵.
+
+### Files and running
+
+| | |
+|---|---|
+| [tools/dev_ise.py](../tools/dev_ise.py) | ISE physics, cell correction, voltage ramp |
+| [tools/ise_grid.py](../tools/ise_grid.py) | the full ISE mesh: tetrahedra from faces, contacts, doping |
+| [tools/voronoi3d.py](../tools/voronoi3d.py) | signed cell face areas |
+| [tools/tensor_mesh.py](../tools/tensor_mesh.py) | tensor meshes on the ISE axes |
+| [tools/dev3d.py](../tools/dev3d.py), [tools/mesh3d.py](../tools/mesh3d.py) | first approach: Gmsh mesh, mobility by the edge field and by \|E\| |
+| [devsim/run_ise.py](../Lab3_diode_3D/devsim/run_ise.py) | main computation |
+| [devsim/plot_ise.py](../Lab3_diode_3D/devsim/plot_ise.py) | verification figure and tables |
+| [devsim/reference_iv.py](../Lab3_diode_3D/devsim/reference_iv.py) | digitization of the reference IV |
+
+```bash
+cd Lab3_diode_3D/devsim
+python run_ise.py A --fast          # ISE mesh; comparison with ise/sA_des.plt
+python run_ise.py B --fast          # B on mesh A
+python run_ise.py A --tensor 1      # mesh convergence check
+python plot_ise.py                  # verification figure
+cd .. && python make_figures.py     # summary sheet results/devsim_ise/
 ```

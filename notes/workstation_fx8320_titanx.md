@@ -1,6 +1,10 @@
 # DEVSIM on a 2012 Workstation (FX-8320, TITAN X Pascal): MKL Pardiso False Convergence, cuDSS GPU Solver, FP64 and float128
 
-[← к README](../README.md)
+[Русский](#русский) · [English](#english) · [← к README](../README.md)
+
+## Русский
+
+### DEVSIM на рабочей станции 2012 года
 
 Мелкие 3D-сетки DEVSIM не помещаются в 8 ГБ памяти ноутбука, поэтому часть
 расчётов работы 3 выполнена на рабочей станции. Архитектура машины устаревшая, и
@@ -14,7 +18,7 @@
 | видеокарта | NVIDIA TITAN X Pascal, 12 ГБ, sm_61 |
 | система | Windows, conda-окружение `nanomod` из [environment.yml](../environment.yml) |
 
-## Окружение
+### Окружение
 
 - **pip из нового окружения не выходит в сеть.** Брандмауэр (simplewall)
   пропускает только знакомый базовый Python. Колёса скачиваются им
@@ -24,7 +28,7 @@
 - **На Windows нет модуля `resource`** — пиковая память в `run.py` берётся через
   WinAPI (`GetProcessMemoryInfo`).
 
-## Прямой решатель: ложная сходимость MKL Pardiso
+### Прямой решатель: ложная сходимость MKL Pardiso
 
 На Windows DEVSIM сам находит `mkl_rt` в окружении и берёт MKL Pardiso вместо
 вшитого UMFPACK. На FX-8320 с **MKL 2025.0** Pardiso после первой итерации
@@ -33,9 +37,13 @@
 тоже. Поэтому по умолчанию везде UMFPACK, а выбор — флагом `--direct`
 ([tools/dev3d.py](../tools/dev3d.py), `use_direct`).
 
+Ошибка отправлена разработчикам как [devsim/devsim#172](https://github.com/devsim/devsim/issues/172).
+Затронута только MKL 2025.0.0: с 2025.0.1 и 2025.1.0 тот же шаг сходится к тому же току,
+что и с UMFPACK.
+
 Как и в случае с ISE, слишком лёгкую сходимость следует проверять.
 
-## Видеокарта: cuDSS
+### Видеокарта: cuDSS
 
 Разложение матрицы — самая дорогая часть на мелкой 3D-сетке, и его можно отдать
 видеокарте. DEVSIM позволяет подключить внешний прямой решатель (тот же протокол,
@@ -56,7 +64,7 @@
   `ALLOC_FAILED`. Такие сетки DEVSIM считает на CPU — MKL Pardiso 2023.1, около 4 мин
   на итерацию Ньютона.
 
-## Самописный решатель на видеокарте
+### Самописный решатель на видеокарте
 
 [tools/dd3d_ise.py](../tools/dd3d_ise.py) решает итерацией Гуммеля, то есть три
 скалярных системы по N неизвестных вместо одной на 3N у DEVSIM, — поэтому на
@@ -68,7 +76,7 @@
 (10 тыс. узлов) ток совпадает до пятого знака: 5.24944 и 5.24945 мА у диода A при 4 В,
 хотя методы независимы (у DEVSIM — связанный Ньютон).
 
-## Время расчёта
+### Время расчёта
 
 На точку ВАХ, по 2–4 прогона параллельно на машине; низкие напряжения — в double.
 
@@ -88,7 +96,7 @@
 
 Замеры — [experiments/gpu_precision/bench_cudss.py](../experiments/gpu_precision/bench_cudss.py).
 
-## FP64 на Pascal и «синтетический» double
+### FP64 на Pascal и «синтетический» double
 
 TITAN X Pascal — потребительская видеокарта с медленной арифметикой double (1/32
 от float). Рассматривался вариант вычислений в df64 — числе из пары float32 (схемы Деккера и Кнута: `two_sum`,
@@ -98,7 +106,7 @@ TITAN X Pascal — потребительская видеокарта с мед
 память, а не в арифметику, и выигрыш df64 там не виден
 ([experiments/gpu_precision/bench_df64.py](../experiments/gpu_precision/bench_df64.py)).
 
-## Точность на CPU: float128
+### Точность на CPU: float128
 
 Вопрос точности актуален и для CPU. Ток Шарфеттера — Гуммеля — разность больших
 потоков, и в double Ньютон застревает на 10⁻⁵, а ток при малых смещениях
@@ -107,7 +115,77 @@ TITAN X Pascal — потребительская видеокарта с мед
 10⁻¹¹. Сам линейный решатель в float128 (`extended_solver`) не нужен. Подробнее —
 в [заметке про DEVSIM](devsim_3d.md#численная-часть).
 
-## Логи
+### Логи
 
 Рабочие логи прогонов на ПК лежат в `Lab3_diode_3D/devsim/logs_pc/` и в
 репозиторий не попадают — только итоговые `iv_*.json`.
+
+---
+
+## English
+
+### DEVSIM on a 2012 workstation
+
+The fine 3D DEVSIM meshes do not fit into the 8 GB of RAM of the laptop, so part of the lab 3 runs was done on a workstation. The machine's architecture is dated, and it exposed problems that do not show up on Apple M1. These problems and their workarounds are described below. The physical models and the results are in the [DEVSIM note](devsim_3d.md#english).
+
+| | |
+|---|---|
+| CPU | AMD FX-8320, 8 threads, 2012 (Piledriver) |
+| memory | 32 GB DDR3 |
+| GPU | NVIDIA TITAN X Pascal, 12 GB, sm_61 |
+| system | Windows, conda environment `nanomod` from [environment.yml](../environment.yml) |
+
+### Environment
+
+- **pip from a new environment cannot reach the network.** The firewall (simplewall) only lets the familiar base Python through. Wheels are downloaded with it (`pip download` for py3.12/win_amd64) and installed into the environment offline (`pip install --no-index --find-links <folder>`). LuLu behaves the same way on macOS, and the workaround is the same.
+- **Windows has no `resource` module**, so the peak memory in `run.py` is taken through WinAPI (`GetProcessMemoryInfo`).
+
+### Direct solver: false convergence of MKL PARDISO
+
+On Windows DEVSIM finds `mkl_rt` in the environment by itself and uses MKL PARDISO instead of the bundled UMFPACK. On the FX-8320 with **MKL 2025.0** PARDISO returns a zero update after the first iteration: the relative error drops exactly to zero, and Newton formally converges to a wrong solution. MKL 2023.1 works correctly (it is the version installed in the environment), and so does UMFPACK. Therefore UMFPACK is the default everywhere, and the solver is chosen with the `--direct` flag ([tools/dev3d.py](../tools/dev3d.py), `use_direct`).
+
+The problem was reported as [devsim/devsim#172](https://github.com/devsim/devsim/issues/172). Only MKL 2025.0.0 is affected: with 2025.0.1 and 2025.1.0 the same step converges to the same current as with UMFPACK.
+
+As with ISE, convergence that comes too easily has to be checked.
+
+### GPU: cuDSS
+
+Matrix factorization is the most expensive part on a fine 3D mesh, and it can be offloaded to the GPU. DEVSIM accepts an external direct solver (the same protocol as the bundled UMFPACK: `init / factor / solve`, matrix in CSC), and [tools/cudss_shim.py](../tools/cudss_shim.py) plugs in NVIDIA cuDSS through `nvmath-python` and CuPy, in FP64. The Jacobian is still assembled on the CPU, including in float128.
+
+- **Without matrix equilibration cuDSS returns a wrong solution.** It chooses pivots statically, while the rows of the Poisson equation in centimetres are of order 10⁻¹⁶ against order one in the contact rows. Scaling rows and columns (maximum 1 in each) removes the problem: the currents agree with UMFPACK to six digits.
+- **Speed** on a synthetic case (3D, 7-point stencil): 216 thousand unknowns — 2.4 s, 512 thousand — 12 s.
+- **Limit**: about 200 thousand unknowns entirely in GPU memory. A hybrid mode (factors in host memory, `CUDSS_HYBRID=1`, `CUDSS_GPU_LIMIT`) is implemented, but it did not handle the coupled DEVSIM system on 151 thousand nodes (450 thousand unknowns) either: `ALLOC_FAILED`. DEVSIM solves such meshes on the CPU, with MKL PARDISO 2023.1, at about 4 min per Newton iteration.
+
+### Own solver on the GPU
+
+[tools/dd3d_ise.py](../tools/dd3d_ise.py) uses Gummel iteration, that is, three scalar systems of N unknowns instead of one system of 3N in DEVSIM, so meshes several times finer fit on the GPU. The assembly is done in CuPy, and the systems are solved by cuDSS with the same row and column equilibration. Gummel itself converges slowly at high injection (at 2–4 V, hundreds of iterations without reaching 10⁻⁶ V); Anderson acceleration on the quasi-Fermi levels cuts this to 15–40 iterations. A 76-thousand-node mesh with 14 IV points up to 4 V takes about 11 minutes per diode (two diodes in parallel on one card). On the same mesh as DEVSIM (10 thousand nodes) the current agrees to five digits, 5.24944 and 5.24945 mA for diode A at 4 V, although the methods are independent (DEVSIM uses coupled Newton).
+
+### Run times
+
+Per IV point, with 2–4 runs in parallel on the machine; low voltages in double.
+
+| solver | mesh, nodes | per point |
+|---|---|---|
+| DEVSIM, CPU | reference, 1820 | ≈1.5 s |
+| DEVSIM, CPU | first ISE, 5751 | ≈8 s; with float128 below 0.7 V — 80–100 s |
+| DEVSIM, CPU | tensor, 10 thousand | 18–25 s, 14 min per IV |
+| DEVSIM, CPU, PARDISO | tensor, 151 thousand | 20–30 min (≈4 min per Newton iteration), not finished |
+| own, GPU | tensor, 10 thousand | 0.3–5.5 s, 151 s per IV |
+| own, GPU | tensor, 76 thousand | 17–90 s, 11 min per IV of 14 points |
+| own, CPU (SuperLU) | tensor, 10 thousand | ≈30 s — 30 to 100 times slower than on the GPU |
+
+Gummel iterations per point: 3–5 up to 0.7 V, 6–16 at 0.8–1.5 V, 19–36 at 2–4 V; without Anderson acceleration, 200 without convergence at 2–4 V. One iteration on 76 thousand nodes takes 3.5–4 s. For comparison, ISE (XP emulation on M1, 1820 nodes) takes ≈10 min per diode.
+
+Benchmarks: [experiments/gpu_precision/bench_cudss.py](../experiments/gpu_precision/bench_cudss.py).
+
+### FP64 on Pascal and "synthetic" double
+
+TITAN X Pascal is a consumer GPU with slow double-precision arithmetic (1/32 of float). Computing in df64, a number made of a pair of float32 values (Dekker and Knuth schemes: `two_sum`, `two_prod` via `fmaf`, about 48 mantissa bits against 53 in double), was considered. A benchmark of two kernels — a 7-point stencil (memory-bound) and 256 consecutive FMAs per element (compute-bound) — showed that the approach does not pay off: the iterative solver is limited by memory, not by arithmetic, and the df64 gain is not visible there ([experiments/gpu_precision/bench_df64.py](../experiments/gpu_precision/bench_df64.py)).
+
+### Precision on the CPU: float128
+
+Precision matters on the CPU too. The Scharfetter–Gummel current is a difference of large fluxes, and in double Newton stalls at 10⁻⁵ while the current at low bias comes out wrong. DEVSIM can assemble models and equations in float128 (`extended_model`, `extended_equation`), and with them convergence is quadratic down to 10⁻¹¹. The linear solver itself does not need float128 (`extended_solver`). Details are in the [DEVSIM note](devsim_3d.md#numerics).
+
+### Logs
+
+The working logs of the PC runs are kept in `Lab3_diode_3D/devsim/logs_pc/` and are not committed; only the final `iv_*.json` files are.
